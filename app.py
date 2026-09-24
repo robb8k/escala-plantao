@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e redução dos botões de ação pela metade
+# Estilização CSS Tática (Grafite e Laranja Queimado) e redução extrema dos botões de ação
 st.markdown("""
 <style>
     .stApp {
@@ -49,11 +49,12 @@ st.markdown("""
     .stButton button:hover {
         background-color: #9A3206 !important;
     }
-    /* Reduz o tamanho e espaçamento dos botões de ação e exclusão pela metade */
+    /* Redução drástica (66% a mais) no tamanho dos botões de ação e exclusão */
     div.stButton > button {
-        padding: 2px 6px !important;
-        font-size: 11px !important;
-        min-height: 28px !important;
+        padding: 1px 3px !important;
+        font-size: 9px !important;
+        min-height: 20px !important;
+        max-height: 24px !important;
     }
     hr {
         border-color: #4A4240 !important;
@@ -265,7 +266,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.subheader("Militares / Atribuições")
 
-    colunas_tabela = st.columns([1, 2, 2, 2, 2, 0.6])
+    colunas_tabela = st.columns([1, 2, 2, 2, 2, 0.4])
     with colunas_tabela[0]: st.markdown("**Nº**")
     with colunas_tabela[1]: st.markdown("**Militar**")
     with colunas_tabela[2]: st.markdown("**Horário**")
@@ -277,7 +278,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     indice_remover_militar = None
 
     for i, item in enumerate(st.session_state.linhas_escala):
-        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 0.6])
+        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 0.4])
         
         with c1:
             num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
@@ -302,7 +303,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     else:
         st.session_state.linhas_escala = linhas_temp
 
-    col_btn_add_m = st.columns([1, 5])[0]
+    col_btn_add_m = st.columns([1, 6])[0]
     with col_btn_add_m:
         if st.button("➕ Adicionar"):
             novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
@@ -323,7 +324,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         col_alvo = cols_guarnicoes[g_idx % 2]
         
         with col_alvo:
-            c_nome, c_del = st.columns([5, 0.8])
+            c_nome, c_del = st.columns([5, 0.5])
             with c_nome:
                 guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
             with c_del:
@@ -331,21 +332,21 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                     acao_remover_guarnicao = g_idx
             
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
-                c_mil, c_del_m = st.columns([5, 0.8])
+                c_mil, c_del_m = st.columns([5, 0.5])
                 with c_mil:
                     guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed", placeholder="Militar...")
                 with c_del_m:
                     if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                         acao_remover_militar_guarnicao = (g_idx, m_idx)
             
-            c_add_m, c_vazio = st.columns([2, 4])
-            with c_add_m:
+            col_btn_mg = st.columns([1, 4])[0]
+            with col_btn_mg:
                 if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
                     acao_adicionar_militar_guarnicao = g_idx
             
             st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-    col_btn_add_g = st.columns([1, 5])[0]
+    col_btn_add_g = st.columns([1, 6])[0]
     with col_btn_add_g:
         if st.button("➕ Guarnição"):
             nova_pos = len(st.session_state.lista_guarnicoes) + 1
