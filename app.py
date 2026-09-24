@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e redução extrema dos botões de ação
+# Estilização CSS Tática (Grafite e Laranja Queimado) e redução extrema de todos os botões de ação e exclusão
 st.markdown("""
 <style>
     .stApp {
@@ -49,7 +49,7 @@ st.markdown("""
     .stButton button:hover {
         background-color: #9A3206 !important;
     }
-    /* Redução drástica (66% a mais) no tamanho dos botões de ação e exclusão */
+    /* Redução drástica e unificada em todos os botões de ação/exclusão da interface */
     div.stButton > button {
         padding: 1px 3px !important;
         font-size: 9px !important;
@@ -324,7 +324,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         col_alvo = cols_guarnicoes[g_idx % 2]
         
         with col_alvo:
-            c_nome, c_del = st.columns([5, 0.5])
+            c_nome, c_del = st.columns([5, 0.4])
             with c_nome:
                 guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
             with c_del:
@@ -332,7 +332,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                     acao_remover_guarnicao = g_idx
             
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
-                c_mil, c_del_m = st.columns([5, 0.5])
+                c_mil, c_del_m = st.columns([5, 0.4])
                 with c_mil:
                     guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed", placeholder="Militar...")
                 with c_del_m:
