@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima limpeza de inputs
+# Estilização CSS Tática e desativação total de autocomplete e cache visual
 st.markdown("""
 <style>
     .stApp {
@@ -62,16 +62,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Injeção de JavaScript para forçar a desativação de autocomplete e cache de formulário nos inputs
+# Script JS agressivo para remover qualquer resquício de sugestão de formulário ou histórico do browser
 st.markdown("""
 <script>
-    setTimeout(function() {
+    function limparAutofill() {
         const inputs = document.querySelectorAll('input');
         inputs.forEach(input => {
-            input.setAttribute('autocomplete', 'off');
-            input.setAttribute('data-form-type', 'other');
+            input.setAttribute('autocomplete', 'new-password');
+            input.setAttribute('autocorrect', 'off');
+            input.setAttribute('autocapitalize', 'off');
+            input.setAttribute('spellcheck', 'false');
         });
-    }, 500);
+    }
+    setInterval(limparAutofill, 500);
 </script>
 """, unsafe_allow_html=True)
 
@@ -231,7 +234,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Gestão de Estado Global (sem valores predefinidos fixos)
+# Gestão de Estado Global (Garantindo que comecem vazias)
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
@@ -271,11 +274,12 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         cidade_local = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_nova")
         st.session_state.cidade_val = cidade_local
     with col_c2:
+        # Formato estrito brasileiro DD/MM/AAAA visível
         try:
             dt_parse = datetime.strptime(st.session_state.data_val, '%d/%m/%Y')
         except:
             dt_parse = datetime.today()
-        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_nova")
+        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_nova", format="DD/MM/YYYY")
         data_plantao = data_plantao_obj.strftime('%d/%m/%Y')
         st.session_state.data_val = data_plantao
     with col_c3:
@@ -394,7 +398,9 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.markdown("---")
 
-    col_btn_save, col_btn_pdf = st.columns(2)
+    # Botões de Ação Inferiores (Salvar, PDF e Limpar Escala)
+    col_btn_save, col_btn_pdf, col_btn_limpar = st.columns(3)
+    
     with col_btn_save:
         if st.button("Salvar e Arquivar Escala Oficial", type="primary", use_container_width=True):
             salvar_escala_db(data_plantao, ala_selecionada, cidade_local, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
@@ -412,6 +418,22 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             mime='application/pdf',
             use_container_width=True
         )
+
+    with col_btn_limpar:
+        if st.button("🧹 Limpar Escala", use_container_width=True):
+            st.session_state.cidade_val = ""
+            st.session_state.chefe_val = ""
+            st.session_state.linhas_escala = [
+                {"num": "01", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+                {"num": "02", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+                {"num": "03", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+                {"num": "04", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
+            ]
+            st.session_state.lista_guarnicoes = [
+                {"nome": "1ª GU BM", "militares": ["", ""]},
+                {"nome": "2ª GU BM", "militares": ["", ""]}
+            ]
+            st.rerun()
 
     resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
@@ -459,7 +481,6 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
             df_filtrado = df_filtrado[df_filtrado["ala"] == filtro_ala]
             
         if usar_filtro_data:
-            # Converte a coluna data da base (formato DD/MM/AAAA) para datetime para permitir comparação por intervalo
             df_filtrado['data_dt'] = pd.to_datetime(df_filtrado['data'], format='%d/%m/%Y', errors='coerce')
             inicio_ts = pd.to_datetime(data_inicio)
             fim_ts = pd.to_datetime(data_fim)
