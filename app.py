@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e compactação de margens e inputs
+# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima compactação
 st.markdown("""
 <style>
     .stApp {
@@ -19,7 +19,7 @@ st.markdown("""
         color: #E6E1E0;
     }
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 2rem !important;
     }
     h1, h2, h3 {
@@ -32,7 +32,7 @@ st.markdown("""
         border: 1px solid #4A4240 !important;
         border-radius: 6px !important;
         padding: 4px 8px !important;
-        font-size: 14px !important;
+        font-size: 13px !important;
     }
     .stButton button[kind="primary"], div.stButton > button {
         background-color: #C2410C !important;
@@ -47,7 +47,7 @@ st.markdown("""
     }
     hr {
         border-color: #4A4240 !important;
-        margin: 1rem 0 !important;
+        margin: 0.8rem 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -125,7 +125,7 @@ if st.button("Adicionar"):
 
 st.markdown("---")
 
-# Gestão de Estado para Guarnições Dinâmicas e Compactas Lado a Lado
+# Gestão de Estado para Guarnições Reduzidas Lado a Lado (2 colunas)
 if "lista_guarnicoes" not in st.session_state:
     st.session_state.lista_guarnicoes = [
         {"nome": "1ª GU BM", "militares": [chefe_servico, "CB VASCONCELOS"]},
@@ -138,36 +138,37 @@ acao_remover_guarnicao = None
 acao_adicionar_militar_guarnicao = None
 acao_remover_militar_guarnicao = None
 
-# Exibição lado a lado em 2 colunas de cartões compactos
 cols_guarnicoes = st.columns(2)
 
 for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
     col_alvo = cols_guarnicoes[g_idx % 2]
     
     with col_alvo:
-        with st.container(border=True):
-            # Cabeçalho da Guarnição super compacto
-            c_nome, c_del = st.columns([5, 1])
-            with c_nome:
-                guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
-            with c_del:
-                if st.button("🗑️", key=f"del_g_{g_idx}", help="Remover Guarnição"):
-                    acao_remover_guarnicao = g_idx
-            
-            # Militares da Guarnição em lista compacta
-            for m_idx, militar_nome in enumerate(guarnicao["militares"]):
-                c_mil, c_del_m = st.columns([6, 1])
-                with c_mil:
-                    guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
-                with c_del_m:
-                    if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
-                        acao_remover_militar_guarnicao = (g_idx, m_idx)
-            
-            # Botão minimalista para adicionar militar dentro do cartão
+        # Linha compacta para Nome da Guarnição e Botão de Excluir
+        c_nome, c_del = st.columns([5, 1])
+        with c_nome:
+            guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
+        with c_del:
+            if st.button("🗑️", key=f"del_g_{g_idx}", help="Remover Guarnição"):
+                acao_remover_guarnicao = g_idx
+        
+        # Militares em linha reduzida (Campo do militar + Botão de excluir militar)
+        for m_idx, militar_nome in enumerate(guarnicao["militares"]):
+            c_mil, c_del_m = st.columns([5, 1])
+            with c_mil:
+                guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
+            with c_del_m:
+                if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
+                    acao_remover_militar_guarnicao = (g_idx, m_idx)
+        
+        # Botões de ação alinhados de forma reduzida
+        c_add_m, c_vazio = st.columns([3, 3])
+        with c_add_m:
             if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
                 acao_adicionar_militar_guarnicao = g_idx
+        
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-st.markdown("")
 if st.button("➕ Adicionar Guarnição"):
     nova_pos = len(st.session_state.lista_guarnicoes) + 1
     st.session_state.lista_guarnicoes.append({"nome": f"{nova_pos}ª GU BM", "militares": ["", ""]})
