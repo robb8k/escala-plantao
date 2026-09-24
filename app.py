@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima limpeza de inputs
+# Estilização CSS Tática (Grafite e Laranja Queimado)
 st.markdown("""
 <style>
     .stApp {
@@ -60,22 +60,6 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 </style>
-""", unsafe_allow_html=True)
-
-# Injeção de JavaScript para desativar autocomplete e cache de formulário
-st.markdown("""
-<script>
-    setTimeout(function() {
-        const inputs = document.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.setAttribute('autocomplete', 'off');
-            input.setAttribute('autocorrect', 'off');
-            input.setAttribute('autocapitalize', 'off');
-            input.setAttribute('spellcheck', 'false');
-            input.setAttribute('data-form-type', 'other');
-        });
-    }, 300);
-</script>
 """, unsafe_allow_html=True)
 
 # Configuração da Base de Dados SQLite para o Histórico
@@ -269,10 +253,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Gestão de Versão de Estado para limpar caches de inputs antigos
-if "session_version" not in st.session_state:
-    st.session_state.session_version = 0
-
+# Inicialização de Estados persistentes na sessão
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
@@ -298,8 +279,6 @@ if "lista_guarnicoes" not in st.session_state:
 
 aba_escolhida = st.radio("", ["📝 Nova Escala / Plantão", "🗂️ Histórico de Escalas"], horizontal=True, label_visibility="collapsed", key="radio_abas")
 
-ver = st.session_state.session_version
-
 if aba_escolhida == "📝 Nova Escala / Plantão":
     
     col_ala, col_c1, col_c2, col_c3 = st.columns(4)
@@ -308,22 +287,18 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     idx_ala = alas_opcoes.index(st.session_state.ala_val) if st.session_state.ala_val in alas_opcoes else 0
 
     with col_ala:
-        ala_selecionada = st.selectbox("Ala Operacional", alas_opcoes, index=idx_ala, key=f"sel_ala_nova_{ver}")
-        st.session_state.ala_val = ala_selecionada
+        st.session_state.ala_val = st.selectbox("Ala Operacional", alas_opcoes, index=idx_ala, key="sel_ala_nova")
     with col_c1:
-        cidade_local = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key=f"input_cidade_nova_{ver}")
-        st.session_state.cidade_val = cidade_local
+        st.session_state.cidade_val = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_nova")
     with col_c2:
         try:
             dt_parse = datetime.strptime(st.session_state.data_val, '%d/%m/%Y')
         except:
             dt_parse = datetime.today()
-        data_plantao_obj = st.date_input("Data:", value=dt_parse, key=f"input_data_nova_{ver}", format="DD/MM/YYYY")
-        data_plantao = data_plantao_obj.strftime('%d/%m/%Y')
-        st.session_state.data_val = data_plantao
+        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_nova", format="DD/MM/YYYY")
+        st.session_state.data_val = data_plantao_obj.strftime('%d/%m/%Y')
     with col_c3:
-        chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key=f"input_chefe_nova_{ver}")
-        st.session_state.chefe_val = chefe_servico
+        st.session_state.chefe_val = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_nova")
 
     st.markdown("---")
 
@@ -338,7 +313,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     with colunas_tabela[5]: st.markdown("**Telefone**")
     with colunas_tabela[6]: st.markdown("**Ação**")
 
-    linhas_temp = []
     indice_remover_militar = None
 
     for i, item in enumerate(st.session_state.linhas_escala):
@@ -348,31 +322,29 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             num = f"{i+1:02d}"
             st.markdown(f"<div style='padding-top: 6px; font-weight: bold; color: #E6E1E0;'>{num}</div>", unsafe_allow_html=True)
         with c2:
-            pg = st.text_input(f"PG_{i}_{ver}", value=item.get("pg", ""), key=f"pg_{i}_{ver}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["pg"] = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed")
         with c3:
-            mil = st.text_input(f"Mil_{i}_{ver}", value=item["militar"], key=f"mil_{i}_{ver}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["militar"] = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed")
         with c4:
-            hor = st.text_input(f"Hor_{i}_{ver}", value=item["horario"], key=f"hor_{i}_{ver}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["horario"] = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed")
         with c5:
-            atr = st.text_input(f"Atr_{i}_{ver}", value=item["atribuicao"], key=f"atr_{i}_{ver}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["atribuicao"] = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
         with c6:
-            tel_input = st.text_input(f"Tel_{i}_{ver}", value=item["telefone"], key=f"tel_{i}_{ver}", label_visibility="collapsed")
-            tel = formatar_telefone(tel_input)
+            tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["telefone"] = formatar_telefone(tel_input)
         with c7:
-            if st.button("❌", key=f"del_mil_{i}_{ver}"):
+            if st.button("❌", key=f"del_mil_{i}"):
                 indice_remover_militar = i
                 
-        linhas_temp.append({"num": num, "pg": pg, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel})
+        st.session_state.linhas_escala[i]["num"] = num
 
     if indice_remover_militar is not None:
         st.session_state.linhas_escala.pop(indice_remover_militar)
         st.rerun()
-    else:
-        st.session_state.linhas_escala = linhas_temp
 
     col_btn_add_m = st.columns([1, 6])[0]
     with col_btn_add_m:
-        if st.button("➕ Adicionar", key=f"btn_add_m_{ver}"):
+        if st.button("➕ Adicionar"):
             novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
             st.session_state.linhas_escala.append({"num": novo_num, "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
             st.rerun()
@@ -393,29 +365,29 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         with col_alvo:
             c_nome, c_del = st.columns([5, 0.4])
             with c_nome:
-                guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}_{ver}", label_visibility="collapsed")
+                st.session_state.lista_guarnicoes[g_idx]["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
             with c_del:
-                if st.button("🗑️", key=f"del_g_{g_idx}_{ver}", help="Remover Guarnição"):
+                if st.button("🗑️", key=f"del_g_{g_idx}", help="Remover Guarnição"):
                     acao_remover_guarnicao = g_idx
             
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
                 c_mil, c_del_m = st.columns([5, 0.4])
                 with c_mil:
-                    guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}_{ver}", label_visibility="collapsed")
+                    st.session_state.lista_guarnicoes[g_idx]["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
                 with c_del_m:
-                    if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}_{ver}", help="Remover Militar"):
+                    if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                         acao_remover_militar_guarnicao = (g_idx, m_idx)
             
             col_btn_mg = st.columns([1, 4])[0]
             with col_btn_mg:
-                if st.button("➕ Militar", key=f"add_m_g_{g_idx}_{ver}", use_container_width=True):
+                if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
                     acao_adicionar_militar_guarnicao = g_idx
             
             st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
     col_btn_add_g = st.columns([1, 6])[0]
     with col_btn_add_g:
-        if st.button("➕ Guarnição", key=f"btn_add_g_{ver}"):
+        if st.button("➕ Guarnição"):
             nova_pos = len(st.session_state.lista_guarnicoes) + 1
             st.session_state.lista_guarnicoes.append({"nome": f"{nova_pos}ª GU BM", "militares": ["", ""]})
             st.rerun()
@@ -438,23 +410,22 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.markdown("---")
 
-    # Botões inferiores: Salvar, Baixar PDF, Criar Novo e WhatsApp
     col_btn_save, col_btn_pdf, col_btn_novo, col_btn_wapp = st.columns(4)
     
     with col_btn_save:
         if st.button("Salvar e Arquivar", type="primary", use_container_width=True):
-            salvar_escala_db(data_plantao, ala_selecionada, cidade_local, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
+            salvar_escala_db(st.session_state.data_val, st.session_state.ala_val, st.session_state.cidade_val, st.session_state.chefe_val, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
             st.success("Escala salva com sucesso!")
 
     with col_btn_pdf:
-        pdf_path = gerar_pdf(cidade_local, data_plantao, ala_selecionada, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
+        pdf_path = gerar_pdf(st.session_state.cidade_val, st.session_state.data_val, st.session_state.ala_val, st.session_state.chefe_val, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
         with open(pdf_path, "rb") as pdf_file:
             PDFbyte = pdf_file.read()
             
         st.download_button(
             label="📥 Baixar PDF",
             data=PDFbyte,
-            file_name=f"Escala_{ala_selecionada.replace(' ', '_')}_{data_plantao.replace('/', '-')}.pdf",
+            file_name=f"Escala_{st.session_state.ala_val.replace(' ', '_')}_{st.session_state.data_val.replace('/', '-')}.pdf",
             mime='application/pdf',
             use_container_width=True
         )
@@ -473,14 +444,15 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                 {"nome": "1ª GU BM", "militares": ["", ""]},
                 {"nome": "2ª GU BM", "militares": ["", ""]}
             ]
-            # Incrementa a versão para invalidar todos os inputs anteriores do Streamlit
-            st.session_state.session_version += 1
+            for key in list(st.session_state.keys()):
+                if key.startswith("pg_") or key.startswith("mil_") or key.startswith("hor_") or key.startswith("atr_") or key.startswith("tel_") or key.startswith("g_") or key.startswith("input_"):
+                    del st.session_state[key]
             st.rerun()
 
     with col_btn_wapp:
-        resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
+        resultado_texto = f"""*ESCALA DE SERVIÇO - {st.session_state.ala_val.upper()} - {st.session_state.cidade_val}, {st.session_state.data_val}*
 
-*CHEFE DE SERVIÇO:* {chefe_servico}
+*CHEFE DE SERVIÇO:* {st.session_state.chefe_val}
 
 *MILITARES / ATRIBUIÇÕES:*
 """
@@ -547,7 +519,6 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
                             st.session_state.data_val = row['data']
                             st.session_state.linhas_escala = ast.literal_eval(row['dados_militares'])
                             st.session_state.lista_guarnicoes = ast.literal_eval(row['dados_guarnicoes'])
-                            st.session_state.session_version += 1 # Invalida e limpa inputs antigos ao abrir do histórico
                             st.rerun()
                     with c_acao2:
                         if st.button(f"🗑️ Excluir", key=f"del_hist_{row['id']}"):
