@@ -52,6 +52,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Injeção de JavaScript para desativar o autocomplete/histórico do navegador nos inputs
+st.markdown("""
+<script>
+    setTimeout(function() {
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.setAttribute('autocomplete', 'off');
+        });
+    }, 1000);
+</script>
+""", unsafe_allow_html=True)
+
 # Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
 def formatar_telefone(texto):
     digitos = "".join([c for c in texto if c.isdigit()])
@@ -74,11 +86,11 @@ col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 with col_ala:
     ala_selecionada = st.selectbox("Ala Operacional", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"])
 with col_c1:
-    cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI")
+    cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI", key="input_cidade")
 with col_c2:
-    data_plantao = st.text_input("Data:", value=datetime.today().strftime('%d/%m/%Y'))
+    data_plantao = st.text_input("Data:", value=datetime.today().strftime('%d/%m/%Y'), key="input_data")
 with col_c3:
-    chefe_servico = st.text_input("Chefe de Serviço", value="")
+    chefe_servico = st.text_input("Chefe de Serviço", value="", key="input_chefe")
 
 st.markdown("---")
 
