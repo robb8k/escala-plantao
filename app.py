@@ -54,19 +54,14 @@ st.markdown("""
 
 # Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
 def formatar_telefone(texto):
-    # Remove tudo o que não for número
     digitos = "".join([c for c in texto if c.isdigit()])
-    
-    # Aplica a máscara progressivamente
     if len(digitos) <= 2:
         return f"({digitos}" if len(digitos) > 0 else ""
     elif len(digitos) <= 6:
         return f"({digitos[:2]}) {digitos[2:]}"
     elif len(digitos) <= 10:
-        # Telefones fixos ou celulares mais antigos (XX) XXXX-XXXX
         return f"({digitos[:2]}) {digitos[2:6]}-{digitos[6:]}"
     else:
-        # Celulares com 9º dígito (XX) XXXXX-XXXX
         return f"({digitos[:2]}) {digitos[2:7]}-{digitos[7:11]}"
 
 st.markdown("""
@@ -83,17 +78,17 @@ with col_c1:
 with col_c2:
     data_plantao = st.text_input("Data:", value=datetime.today().strftime('%d/%m/%Y'))
 with col_c3:
-    chefe_servico = st.text_input("Chefe de Serviço", value="SGT MUNIZ")
+    chefe_servico = st.text_input("Chefe de Serviço", value="")
 
 st.markdown("---")
 
-# Gestão de Estado para as linhas dinâmicas de Militares / Atribuições
+# Gestão de Estado para as linhas dinâmicas de Militares / Atribuições (vazias por padrão)
 if "linhas_escala" not in st.session_state:
     st.session_state.linhas_escala = [
-        {"num": "01", "militar": chefe_servico, "horario": "08:00 / 22:00 / 05:00", "atribuicao": "CHEFE DE SERVIÇO / VTR'S", "telefone": "(33) 98807-9755"},
-        {"num": "02", "militar": "SGT DIONE", "horario": "10:00 / 16:00 / 00:00", "atribuicao": "A.C.S. / ALOJ. SGT / VTR'S", "telefone": "(33) 99833-9415"},
-        {"num": "03", "militar": "SGT SOUZA", "horario": "14:00 / 20:00 / 01:40", "atribuicao": "MP / COZINHA E REFEITÓRIO", "telefone": "(33) 98864-5111"},
-        {"num": "04", "militar": "CB VASCONCELOS", "horario": "12:00 / 18:00 / 03:20", "atribuicao": "MP / COMBATENTE / ALOJ. CB ESD", "telefone": "(33) 98727-8403"}
+        {"num": "01", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "02", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "03", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
     ]
 
 # Tabela Dinâmica: Militares / Atribuições
@@ -122,7 +117,6 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c4:
         atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
     with c5:
-        # Aplica a formatação automática de telefone com base no que foi digitado
         tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
         tel = formatar_telefone(tel_input)
     with c6:
@@ -144,11 +138,11 @@ if st.button("Adicionar"):
 
 st.markdown("---")
 
-# Gestão de Estado para Guarnições Reduzidas Lado a Lado (2 colunas)
+# Gestão de Estado para Guarnições Reduzidas Lado a Lado (vazias por padrão)
 if "lista_guarnicoes" not in st.session_state:
     st.session_state.lista_guarnicoes = [
-        {"nome": "1ª GU BM", "militares": [chefe_servico, "CB VASCONCELOS"]},
-        {"nome": "2ª GU BM", "militares": ["SGT DIONE", "SGT ROBSON"]}
+        {"nome": "1ª GU BM", "militares": ["", ""]},
+        {"nome": "2ª GU BM", "militares": ["", ""]}
     ]
 
 st.subheader("Guarnições")
