@@ -52,6 +52,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
+def formatar_telefone(texto):
+    # Remove tudo o que não for número
+    digitos = "".join([c for c in texto if c.isdigit()])
+    
+    # Aplica a máscara progressivamente
+    if len(digitos) <= 2:
+        return f"({digitos}" if len(digitos) > 0 else ""
+    elif len(digitos) <= 6:
+        return f"({digitos[:2]}) {digitos[2:]}"
+    elif len(digitos) <= 10:
+        # Telefones fixos ou celulares mais antigos (XX) XXXX-XXXX
+        return f"({digitos[:2]}) {digitos[2:6]}-{digitos[6:]}"
+    else:
+        # Celulares com 9º dígito (XX) XXXXX-XXXX
+        return f"({digitos[:2]}) {digitos[2:7]}-{digitos[7:11]}"
+
 st.markdown("""
 # Escala Operacional
 """)
@@ -73,10 +90,10 @@ st.markdown("---")
 # Gestão de Estado para as linhas dinâmicas de Militares / Atribuições
 if "linhas_escala" not in st.session_state:
     st.session_state.linhas_escala = [
-        {"num": "01", "militar": chefe_servico, "horario": "08:00 / 22:00 / 05:00", "atribuicao": "CHEFE DE SERVIÇO / VTR'S", "telefone": "33 98807-9755"},
-        {"num": "02", "militar": "SGT DIONE", "horario": "10:00 / 16:00 / 00:00", "atribuicao": "A.C.S. / ALOJ. SGT / VTR'S", "telefone": "33 99833-9415"},
-        {"num": "03", "militar": "SGT SOUZA", "horario": "14:00 / 20:00 / 01:40", "atribuicao": "MP / COZINHA E REFEITÓRIO", "telefone": "33 98864-5111"},
-        {"num": "04", "militar": "CB VASCONCELOS", "horario": "12:00 / 18:00 / 03:20", "atribuicao": "MP / COMBATENTE / ALOJ. CB ESD", "telefone": "33 98727-8403"}
+        {"num": "01", "militar": chefe_servico, "horario": "08:00 / 22:00 / 05:00", "atribuicao": "CHEFE DE SERVIÇO / VTR'S", "telefone": "(33) 98807-9755"},
+        {"num": "02", "militar": "SGT DIONE", "horario": "10:00 / 16:00 / 00:00", "atribuicao": "A.C.S. / ALOJ. SGT / VTR'S", "telefone": "(33) 99833-9415"},
+        {"num": "03", "militar": "SGT SOUZA", "horario": "14:00 / 20:00 / 01:40", "atribuicao": "MP / COZINHA E REFEITÓRIO", "telefone": "(33) 98864-5111"},
+        {"num": "04", "militar": "CB VASCONCELOS", "horario": "12:00 / 18:00 / 03:20", "atribuicao": "MP / COMBATENTE / ALOJ. CB ESD", "telefone": "(33) 98727-8403"}
     ]
 
 # Tabela Dinâmica: Militares / Atribuições
@@ -105,7 +122,9 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c4:
         atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
     with c5:
-        tel = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
+        # Aplica a formatação automática de telefone com base no que foi digitado
+        tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
+        tel = formatar_telefone(tel_input)
     with c6:
         if st.button("❌", key=f"del_mil_{i}"):
             indice_remover_militar = i
@@ -144,7 +163,6 @@ for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
     col_alvo = cols_guarnicoes[g_idx % 2]
     
     with col_alvo:
-        # Linha compacta para Nome da Guarnição e Botão de Excluir
         c_nome, c_del = st.columns([5, 1])
         with c_nome:
             guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
@@ -152,7 +170,6 @@ for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
             if st.button("🗑️", key=f"del_g_{g_idx}", help="Remover Guarnição"):
                 acao_remover_guarnicao = g_idx
         
-        # Militares em linha reduzida (Campo do militar + Botão de excluir militar)
         for m_idx, militar_nome in enumerate(guarnicao["militares"]):
             c_mil, c_del_m = st.columns([5, 1])
             with c_mil:
@@ -161,7 +178,6 @@ for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
                 if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                     acao_remover_militar_guarnicao = (g_idx, m_idx)
         
-        # Botões de ação alinhados de forma reduzida
         c_add_m, c_vazio = st.columns([3, 3])
         with c_add_m:
             if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
