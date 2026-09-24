@@ -253,7 +253,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Inicialização de Estados persistentes na sessão
+# Inicialização de Estados persistentes seguros na sessão
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
@@ -287,18 +287,18 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     idx_ala = alas_opcoes.index(st.session_state.ala_val) if st.session_state.ala_val in alas_opcoes else 0
 
     with col_ala:
-        st.session_state.ala_val = st.selectbox("Ala Operacional", alas_opcoes, index=idx_ala, key="sel_ala_nova")
+        st.session_state.ala_val = st.selectbox("Ala Operacional", alas_opcoes, index=idx_ala, key="sel_ala_unica")
     with col_c1:
-        st.session_state.cidade_val = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_nova")
+        st.session_state.cidade_val = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_unica", autocomplete="off")
     with col_c2:
         try:
             dt_parse = datetime.strptime(st.session_state.data_val, '%d/%m/%Y')
         except:
             dt_parse = datetime.today()
-        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_nova", format="DD/MM/YYYY")
+        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_unica", format="DD/MM/YYYY")
         st.session_state.data_val = data_plantao_obj.strftime('%d/%m/%Y')
     with col_c3:
-        st.session_state.chefe_val = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_nova")
+        st.session_state.chefe_val = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_unica", autocomplete="off")
 
     st.markdown("---")
 
@@ -322,18 +322,18 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             num = f"{i+1:02d}"
             st.markdown(f"<div style='padding-top: 6px; font-weight: bold; color: #E6E1E0;'>{num}</div>", unsafe_allow_html=True)
         with c2:
-            st.session_state.linhas_escala[i]["pg"] = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["pg"] = st.text_input("pg_u", value=item.get("pg", ""), key=f"pg_linha_{i}", label_visibility="collapsed", autocomplete="off")
         with c3:
-            st.session_state.linhas_escala[i]["militar"] = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["militar"] = st.text_input("mil_u", value=item["militar"], key=f"mil_linha_{i}", label_visibility="collapsed", autocomplete="off")
         with c4:
-            st.session_state.linhas_escala[i]["horario"] = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["horario"] = st.text_input("hor_u", value=item["horario"], key=f"hor_linha_{i}", label_visibility="collapsed", autocomplete="off")
         with c5:
-            st.session_state.linhas_escala[i]["atribuicao"] = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
+            st.session_state.linhas_escala[i]["atribuicao"] = st.text_input("atr_u", value=item["atribuicao"], key=f"atr_linha_{i}", label_visibility="collapsed", autocomplete="off")
         with c6:
-            tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
+            tel_input = st.text_input("tel_u", value=item["telefone"], key=f"tel_linha_{i}", label_visibility="collapsed", autocomplete="off")
             st.session_state.linhas_escala[i]["telefone"] = formatar_telefone(tel_input)
         with c7:
-            if st.button("❌", key=f"del_mil_{i}"):
+            if st.button("❌", key=f"del_mil_linha_{i}"):
                 indice_remover_militar = i
                 
         st.session_state.linhas_escala[i]["num"] = num
@@ -365,22 +365,22 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         with col_alvo:
             c_nome, c_del = st.columns([5, 0.4])
             with c_nome:
-                st.session_state.lista_guarnicoes[g_idx]["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
+                st.session_state.lista_guarnicoes[g_idx]["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_unica_{g_idx}", label_visibility="collapsed", autocomplete="off")
             with c_del:
-                if st.button("🗑️", key=f"del_g_{g_idx}", help="Remover Guarnição"):
+                if st.button("🗑️", key=f"del_g_unica_{g_idx}", help="Remover Guarnição"):
                     acao_remover_guarnicao = g_idx
             
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
                 c_mil, c_del_m = st.columns([5, 0.4])
                 with c_mil:
-                    st.session_state.lista_guarnicoes[g_idx]["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
+                    st.session_state.lista_guarnicoes[g_idx]["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_unica_{m_idx}", label_visibility="collapsed", autocomplete="off")
                 with c_del_m:
-                    if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
+                    if st.button("❌", key=f"del_g_{g_idx}_m_unica_{m_idx}", help="Remover Militar"):
                         acao_remover_militar_guarnicao = (g_idx, m_idx)
             
             col_btn_mg = st.columns([1, 4])[0]
             with col_btn_mg:
-                if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
+                if st.button("➕ Militar", key=f"add_m_g_unica_{g_idx}", use_container_width=True):
                     acao_adicionar_militar_guarnicao = g_idx
             
             st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
@@ -444,9 +444,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                 {"nome": "1ª GU BM", "militares": ["", ""]},
                 {"nome": "2ª GU BM", "militares": ["", ""]}
             ]
-            for key in list(st.session_state.keys()):
-                if key.startswith("pg_") or key.startswith("mil_") or key.startswith("hor_") or key.startswith("atr_") or key.startswith("tel_") or key.startswith("g_") or key.startswith("input_"):
-                    del st.session_state[key]
             st.rerun()
 
     with col_btn_wapp:
