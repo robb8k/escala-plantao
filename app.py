@@ -49,12 +49,11 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# 1. Ala Operacional e Cabeçalho
-st.subheader("Ala Operacional")
+# Campos de Cabeçalho do Plantão
 col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
 with col_ala:
-    ala_selecionada = st.selectbox("Ala:", ["1º", "2º", "3º", "4º"])
+    ala_selecionada = st.selectbox("Ala Operacional:", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"])
 with col_c1:
     cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI")
 with col_c2:
@@ -126,7 +125,7 @@ if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     
     data_formatada = data_plantao.strftime('%d DE %B DE %Y').upper()
     
-    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada} ALA - {cidade_local}, {data_formatada}*
+    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_formatada}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
 *ACS:* {acs_servico}
