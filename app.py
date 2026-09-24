@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e redução extrema de todos os botões de ação e exclusão
+# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima limpeza de inputs
 st.markdown("""
 <style>
     .stApp {
@@ -60,6 +60,19 @@ st.markdown("""
         margin: 0.8rem 0 !important;
     }
 </style>
+""", unsafe_allow_html=True)
+
+# Injeção de JavaScript para forçar a desativação de autocomplete e cache de formulário nos inputs
+st.markdown("""
+<script>
+    setTimeout(function() {
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('data-form-type', 'other');
+        });
+    }, 500);
+</script>
 """, unsafe_allow_html=True)
 
 # Configuração da Base de Dados SQLite para o Histórico
@@ -218,9 +231,9 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Gestão de Estado Global
+# Gestão de Estado Global (sem valores predefinidos fixos)
 if "cidade_val" not in st.session_state:
-    st.session_state.cidade_val = "TEÓFILO OTONI"
+    st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
     st.session_state.chefe_val = ""
 if "ala_val" not in st.session_state:
@@ -266,7 +279,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         data_plantao = data_plantao_obj.strftime('%d/%m/%Y')
         st.session_state.data_val = data_plantao
     with col_c3:
-        chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_nova", placeholder="Digite o Chefe...")
+        chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_nova")
         st.session_state.chefe_val = chefe_servico
 
     st.markdown("---")
@@ -291,15 +304,15 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         with c1:
             num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
         with c2:
-            pg = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed", placeholder="Ex: 2º Sgt")
+            pg = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed")
         with c3:
-            mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed", placeholder="Nome...")
+            mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed")
         with c4:
-            hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed", placeholder="Ex: 08:00")
+            hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed")
         with c5:
-            atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed", placeholder="Atribuição...")
+            atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
         with c6:
-            tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed", placeholder="(33)...")
+            tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
             tel = formatar_telefone(tel_input)
         with c7:
             if st.button("❌", key=f"del_mil_{i}"):
@@ -344,7 +357,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
                 c_mil, c_del_m = st.columns([5, 0.4])
                 with c_mil:
-                    guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed", placeholder="Militar...")
+                    guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
                 with c_del_m:
                     if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                         acao_remover_militar_guarnicao = (g_idx, m_idx)
@@ -433,18 +446,24 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
         with col_f1:
             filtro_ala = st.selectbox("Filtrar por Ala", ["Todas"] + list(df_hist["ala"].unique()))
         with col_f2:
-            usar_filtro_data = st.checkbox("Filtrar por Data Específica (Calendário)")
+            usar_filtro_data = st.checkbox("Filtrar por Intervalo de Datas")
             if usar_filtro_data:
-                data_busca = st.date_input("Selecione a data para busca", value=datetime.today())
-                filtro_data_str = data_busca.strftime('%d/%m/%Y')
-            else:
-                filtro_data_str = "Todas"
+                col_d1, col_d2 = st.columns(2)
+                with col_d1:
+                    data_inicio = st.date_input("De:", value=datetime.today())
+                with col_d2:
+                    data_fim = st.date_input("Até:", value=datetime.today())
             
         df_filtrado = df_hist.copy()
         if filtro_ala != "Todas":
             df_filtrado = df_filtrado[df_filtrado["ala"] == filtro_ala]
+            
         if usar_filtro_data:
-            df_filtrado = df_filtrado[df_filtrado["data"] == filtro_data_str]
+            # Converte a coluna data da base (formato DD/MM/AAAA) para datetime para permitir comparação por intervalo
+            df_filtrado['data_dt'] = pd.to_datetime(df_filtrado['data'], format='%d/%m/%Y', errors='coerce')
+            inicio_ts = pd.to_datetime(data_inicio)
+            fim_ts = pd.to_datetime(data_fim)
+            df_filtrado = df_filtrado[(df_filtrado['data_dt'] >= inicio_ts) & (df_filtrado['data_dt'] <= fim_ts)]
             
         if df_filtrado.empty:
             st.warning("Nenhuma escala encontrada com os filtros selecionados.")
