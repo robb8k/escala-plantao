@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima compactação
+# Estilização CSS Tática (Grafite e Laranja Queimado) e redução dos botões de ação pela metade
 st.markdown("""
 <style>
     .stApp {
@@ -49,6 +49,12 @@ st.markdown("""
     .stButton button:hover {
         background-color: #9A3206 !important;
     }
+    /* Reduz o tamanho e espaçamento dos botões de ação e exclusão pela metade */
+    div.stButton > button {
+        padding: 2px 6px !important;
+        font-size: 11px !important;
+        min-height: 28px !important;
+    }
     hr {
         border-color: #4A4240 !important;
         margin: 0.8rem 0 !important;
@@ -56,7 +62,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configuração da Base de Dados SQLite para o Histórico com suporte a ID único ou atualização por Data/Ala
+# Configuração da Base de Dados SQLite para o Histórico
 def init_db():
     conn = sqlite3.connect("escala_historico.db")
     cursor = conn.cursor()
@@ -79,7 +85,6 @@ init_db()
 def salvar_escala_db(data, ala, cidade, chefe, dados_mils, dados_guars):
     conn = sqlite3.connect("escala_historico.db")
     cursor = conn.cursor()
-    # Verifica se já existe uma escala para a mesma Data e Ala para atualizar ou inserir nova
     cursor.execute('SELECT id FROM escalas WHERE data = ? AND ala = ?', (data, ala))
     existente = cursor.fetchone()
     
@@ -206,9 +211,6 @@ st.markdown("""
 """)
 
 # Gestão de Estado Global para Navegação entre Abas e Carregamento de Histórico
-if "aba_ativa" not in st.session_state:
-    st.session_state.aba_ativa = "📝 Nova Escala / Plantão"
-
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = "TEÓFILO OTONI"
 if "chefe_val" not in st.session_state:
@@ -232,7 +234,6 @@ if "lista_guarnicoes" not in st.session_state:
         {"nome": "2ª GU BM", "militares": ["", ""]}
     ]
 
-# Seletor de Abas Inteligente via Estado
 aba_escolhida = st.radio("", ["📝 Nova Escala / Plantão", "🗂️ Histórico de Escalas"], horizontal=True, label_visibility="collapsed", key="radio_abas")
 
 if aba_escolhida == "📝 Nova Escala / Plantão":
@@ -264,7 +265,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.subheader("Militares / Atribuições")
 
-    colunas_tabela = st.columns([1, 2, 2, 2, 2, 1])
+    colunas_tabela = st.columns([1, 2, 2, 2, 2, 0.6])
     with colunas_tabela[0]: st.markdown("**Nº**")
     with colunas_tabela[1]: st.markdown("**Militar**")
     with colunas_tabela[2]: st.markdown("**Horário**")
@@ -276,7 +277,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     indice_remover_militar = None
 
     for i, item in enumerate(st.session_state.linhas_escala):
-        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 1])
+        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 0.6])
         
         with c1:
             num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
@@ -301,10 +302,12 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     else:
         st.session_state.linhas_escala = linhas_temp
 
-    if st.button("Adicionar"):
-        novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
-        st.session_state.linhas_escala.append({"num": novo_num, "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
-        st.rerun()
+    col_btn_add_m = st.columns([1, 5])[0]
+    with col_btn_add_m:
+        if st.button("➕ Adicionar"):
+            novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
+            st.session_state.linhas_escala.append({"num": novo_num, "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
+            st.rerun()
 
     st.markdown("---")
 
@@ -320,7 +323,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         col_alvo = cols_guarnicoes[g_idx % 2]
         
         with col_alvo:
-            c_nome, c_del = st.columns([5, 1])
+            c_nome, c_del = st.columns([5, 0.8])
             with c_nome:
                 guarnicao["nome"] = st.text_input("Guarnição", value=guarnicao["nome"], key=f"g_nome_{g_idx}", label_visibility="collapsed")
             with c_del:
@@ -328,24 +331,26 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                     acao_remover_guarnicao = g_idx
             
             for m_idx, militar_nome in enumerate(guarnicao["militares"]):
-                c_mil, c_del_m = st.columns([5, 1])
+                c_mil, c_del_m = st.columns([5, 0.8])
                 with c_mil:
                     guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed", placeholder="Militar...")
                 with c_del_m:
                     if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                         acao_remover_militar_guarnicao = (g_idx, m_idx)
             
-            c_add_m, c_vazio = st.columns([3, 3])
+            c_add_m, c_vazio = st.columns([2, 4])
             with c_add_m:
                 if st.button("➕ Militar", key=f"add_m_g_{g_idx}", use_container_width=True):
                     acao_adicionar_militar_guarnicao = g_idx
             
             st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-    if st.button("➕ Adicionar Guarnição"):
-        nova_pos = len(st.session_state.lista_guarnicoes) + 1
-        st.session_state.lista_guarnicoes.append({"nome": f"{nova_pos}ª GU BM", "militares": ["", ""]})
-        st.rerun()
+    col_btn_add_g = st.columns([1, 5])[0]
+    with col_btn_add_g:
+        if st.button("➕ Guarnição"):
+            nova_pos = len(st.session_state.lista_guarnicoes) + 1
+            st.session_state.lista_guarnicoes.append({"nome": f"{nova_pos}ª GU BM", "militares": ["", ""]})
+            st.rerun()
 
     if acao_remover_guarnicao is not None:
         st.session_state.lista_guarnicoes.pop(acao_remover_guarnicao)
@@ -384,7 +389,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             use_container_width=True
         )
 
-    # Botão de Envio WhatsApp
     resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
@@ -432,14 +436,11 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
                     st.markdown(f"📅 **Data:** {row['data']} | 🛡️ **Ala:** {row['ala']} | 📍 **Local:** {row['cidade']}")
                     st.markdown(f"⭐ **Chefe de Serviço:** {row['chefe']}")
                 with c_acao:
-                    if st.button(f"👁️ Abrir Escala", key=f"abrir_{row['id']}"):
-                        # Carrega os dados para o st.session_state e muda para a aba de preenchimento
+                    if st.button(f"👁️ Abrir", key=f"abrir_{row['id']}"):
                         st.session_state.cidade_val = row['cidade']
                         st.session_state.chefe_val = row['chefe']
                         st.session_state.ala_val = row['ala']
                         st.session_state.data_val = row['data']
                         st.session_state.linhas_escala = ast.literal_eval(row['dados_militares'])
                         st.session_state.lista_guarnicoes = ast.literal_eval(row['dados_guarnicoes'])
-                        
-                        # Força a troca de aba
                         st.rerun()
