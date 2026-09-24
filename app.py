@@ -1,9 +1,11 @@
 import streamlit as st
 from datetime import datetime
 import urllib.parse
+import os
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
 st.set_page_config(
     page_title="Escala Operacional",
@@ -52,10 +54,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Função atualizada para aplicar a máscara progressiva do telefone exatamente como pedido: (XX)XXXXX-XXXX
+# Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
 def formatar_telefone(texto):
     digitos = "".join([c for c in texto if c.isdigit()])
-    
     if len(digitos) == 0:
         return ""
     elif len(digitos) <= 2:
@@ -67,11 +68,118 @@ def formatar_telefone(texto):
     else:
         return f"({digitos[:2]}){digitos[2:7]}-{digitos[7:11]}"
 
+# Função para gerar o PDF formatado
+def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
+    pdf_filename = "escala_operacional.pdf"
+    doc = SimpleDocTemplate(pdf_filename, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    story = []
+    
+    styles = getSampleStyleSheet()
+    
+    # Estilos personalizados para o PDF
+    titulo_style = ParagraphStyle(
+        'TituloPDF',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        textColor=colors.HexColor('#C2410C'),
+        alignment=1, # Centralizado
+        spaceAfter=10
+    )
+    
+    sub_style = ParagraphStyle(
+        'SubTituloPDF',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        textColor=colors.HexColor('#1E1B1A'),
+        spaceAfter=6
+    )
+    
+    normal_style = ParagraphStyle(
+        'NormalPDF',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        textColor=colors.HexColor('#1E1B1A')
+    )
+    
+    header_table_style = ParagraphStyle(
+        'HeaderTable',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        textColor=colors.white,
+        alignment=1
+    )
+
+    # Cabeçalho do Documento
+    data_formatada = data.upper()
+    story.append(Paragraph(f"ESCALA DE SERVIÇO - {ala.upper()} - {cidade.upper()}, {data_formatada}", titulo_style))
+    story.append(Spacer(1, 10))
+    
+    if chefe.strip():
+        story.append(Paragraph(f"<b>CHEFE DE SERVIÇO:</b> {chefe.upper()}", sub_style))
+        story.append(Spacer(1, 6))
+
+    # Tabela de Militares / Atribuições
+    story.append(Paragraph("MILITARES / ATRIBUIÇÕES", sub_style))
+    
+    tabela_data = [["Nº", "Militar", "Horário", "Atribuições", "Telefone"]]
+    for item in linhas_escala:
+        tabela_data.append([
+            item["num"],
+            item["militar"],
+            item["horario"],
+            item["atribuicao"],
+            item["telefone"]
+        ])
+    
+    t_militares = Table(tabela_data, colWidths=[30, 120, 100, 165, 90])
+    t_militares.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#C2410C')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#4A4240')),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#F4F1F0')),
+    ]))
+    
+    story.append(t_militares)
+    story.append(Spacer(1, 15))
+
+    # Tabela de Guarnições
+    story.append(Paragraph("GUARNIÇÕES", sub_style))
+    
+    guarnicoes_data = [["Guarnição", "Efetivo / Militares Empregados"]]
+    for g in guarnicoes:
+        mils_str = ", ".join([m for m in g["militares"] if m.strip()])
+        guarnicoes_data.append([g["nome"], mils_str])
+        
+    t_guarnicoes = Table(guarnicoes_data, colWidths=[100, 405])
+    t_guarnicoes.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#33302E')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#4A4240')),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#F4F1F0')),
+    ]))
+    
+    story.append(t_guarnicoes)
+    
+    doc.build(story)
+    return pdf_filename
+
 st.markdown("""
 # Escala Operacional
 """)
 
-# Inicialização de memória de sessão para reter os últimos dados digitados
+# Inicialização de memória de sessão
 if "mem_chefe" not in st.session_state:
     st.session_state.mem_chefe = ""
 if "mem_cidade" not in st.session_state:
@@ -103,7 +211,7 @@ if "linhas_escala" not in st.session_state:
         {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
     ]
 
-# Tabela Dinâmica: Militares / Atribuições (Atualizado o título para apenas Atribuições)
+# Tabela Dinâmica: Militares / Atribuições
 st.subheader("Militares / Atribuições")
 
 colunas_tabela = st.columns([1, 2, 2, 2, 2, 1])
@@ -217,6 +325,20 @@ st.markdown("---")
 
 if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     st.success("Escala estruturada com sucesso!")
+    
+    # Gera o ficheiro PDF
+    pdf_path = gerar_pdf(cidade_local, data_plantao, ala_selecionada, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
+    
+    with open(pdf_path, "rb") as pdf_file:
+        PDFbyte = pdf_file.read()
+        
+    st.download_button(
+        label="📥 Baixar PDF Oficial",
+        data=PDFbyte,
+        file_name=f"Escala_{ala_selecionada.replace(' ', '_')}_{data_plantao.replace('/', '-')}.pdf",
+        mime='application/pdf',
+        use_container_width=True
+    )
     
     resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
