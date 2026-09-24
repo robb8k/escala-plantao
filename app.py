@@ -46,13 +46,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("""
-# 📋 Gestor de Escala Operacional
+# Escala Operacional
 """)
 
-# 1. Cabeçalho Geral
-st.subheader("1. Cabeçalho do Plantão")
-col_c1, col_c2, col_c3 = st.columns(3)
+# 1. Ala Operacional e Cabeçalho
+st.subheader("Ala Operacional")
+col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
+with col_ala:
+    ala_selecionada = st.selectbox("Ala:", ["1º", "2º", "3º", "4º"])
 with col_c1:
     cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI")
 with col_c2:
@@ -67,18 +69,14 @@ st.markdown("---")
 # 2. Tabela de Sentinelas e Atribuições
 st.subheader("2. Escala de Sentinela / Rádio Operador e Atribuições")
 
-# Vamos estruturar 5 postos padrão baseados no modelo operacional
-postos_data = []
 colunas_tabela = st.columns([1, 2, 2, 2, 2])
 
-# Cabeçalhos visuais rápidos
 with colunas_tabela[0]: st.markdown("**Nº**")
 with colunas_tabela[1]: st.markdown("**Militar**")
 with colunas_tabela[2]: st.markdown("**Horário**")
 with colunas_tabela[3]: st.markdown("**Atribuições / Faxina**")
 with colunas_tabela[4]: st.markdown("**Telefone**")
 
-# Linhas preenchidas por predefinição para agilizar
 dados_iniciais = [
     ("01", chefe_servico, "08:00 / 22:00 / 05:00", "CHEFE DE SERVIÇO / VTR'S", "33 98807-9755"),
     ("02", acs_servico, "10:00 / 16:00 / 00:00", "A.C.S. / ALOJ. SGT / VTR'S", "33 99833-9415"),
@@ -123,14 +121,12 @@ with col_g2:
 
 st.markdown("---")
 
-# Botão de Ação para gerar a visualização final / exportação
 if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
-    st.success("Escala estruturada com sucesso! Pronto para envio ou impressão.")
+    st.success("Escala estruturada com sucesso!")
     
-    # Exemplo de pré-visualização textual formatada para partilha rápida
     data_formatada = data_plantao.strftime('%d DE %B DE %Y').upper()
     
-    resultado_texto = f"""*ESCALA DE SERVIÇO - {cidade_local}, {data_formatada}*
+    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada} ALA - {cidade_local}, {data_formatada}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
 *ACS:* {acs_servico}
@@ -148,7 +144,6 @@ if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     
     st.code(resultado_texto, language="markdown")
     
-    # Botão de partilha WhatsApp
     texto_wapp = urllib.parse.quote(resultado_texto)
     url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
     st.markdown(
