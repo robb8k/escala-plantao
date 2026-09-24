@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática e desativação total de autocomplete e cache visual
+# Estilização CSS Tática (Grafite e Laranja Queimado) e máxima limpeza de inputs
 st.markdown("""
 <style>
     .stApp {
@@ -62,19 +62,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Script JS agressivo para remover qualquer resquício de sugestão de formulário ou histórico do browser
+# Injeção de JavaScript para forçar a desativação de autocomplete e cache de formulário nos inputs
 st.markdown("""
 <script>
-    function limparAutofill() {
+    setTimeout(function() {
         const inputs = document.querySelectorAll('input');
         inputs.forEach(input => {
-            input.setAttribute('autocomplete', 'new-password');
-            input.setAttribute('autocorrect', 'off');
-            input.setAttribute('autocapitalize', 'off');
-            input.setAttribute('spellcheck', 'false');
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('data-form-type', 'other');
         });
-    }
-    setInterval(limparAutofill, 500);
+    }, 500);
 </script>
 """, unsafe_allow_html=True)
 
@@ -234,7 +231,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Gestão de Estado Global (Garantindo que comecem vazias)
+# Gestão de Estado Global (vazias por padrão)
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
@@ -274,7 +271,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         cidade_local = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_nova")
         st.session_state.cidade_val = cidade_local
     with col_c2:
-        # Formato estrito brasileiro DD/MM/AAAA visível
         try:
             dt_parse = datetime.strptime(st.session_state.data_val, '%d/%m/%Y')
         except:
@@ -306,7 +302,9 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         c1, c2, c3, c4, c5, c6, c7 = st.columns([0.8, 1.2, 2, 2, 2, 2, 0.4])
         
         with c1:
-            num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
+            # Número estático, sem campo de input
+            num = f"{i+1:02d}"
+            st.markdown(f"<div style='padding-top: 6px; font-weight: bold; color: #E6E1E0;'>{num}</div>", unsafe_allow_html=True)
         with c2:
             pg = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed")
         with c3:
@@ -398,13 +396,13 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.markdown("---")
 
-    # Botões de Ação Inferiores (Salvar, PDF e Limpar Escala)
-    col_btn_save, col_btn_pdf, col_btn_limpar = st.columns(3)
+    # Botões inferiores lado a lado com tamanhos padronizados (Salvar, PDF, Limpar e WhatsApp)
+    col_btn_save, col_btn_pdf, col_btn_limpar, col_btn_wapp = st.columns(4)
     
     with col_btn_save:
-        if st.button("Salvar e Arquivar Escala Oficial", type="primary", use_container_width=True):
+        if st.button("Salvar e Arquivar", type="primary", use_container_width=True):
             salvar_escala_db(data_plantao, ala_selecionada, cidade_local, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
-            st.success("Escala salva e arquivada com sucesso no histórico operacional!")
+            st.success("Escala salva com sucesso!")
 
     with col_btn_pdf:
         pdf_path = gerar_pdf(cidade_local, data_plantao, ala_selecionada, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
@@ -412,7 +410,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             PDFbyte = pdf_file.read()
             
         st.download_button(
-            label="📥 Baixar PDF Oficial",
+            label="📥 Baixar PDF",
             data=PDFbyte,
             file_name=f"Escala_{ala_selecionada.replace(' ', '_')}_{data_plantao.replace('/', '-')}.pdf",
             mime='application/pdf',
@@ -435,27 +433,28 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
             ]
             st.rerun()
 
-    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
+    with col_btn_wapp:
+        resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
 
 *MILITARES / ATRIBUIÇÕES:*
 """
-    for linha in st.session_state.linhas_escala:
-        pg_txt = f"[{linha['pg']}] " if linha.get('pg') else ""
-        resultado_texto += f"- {linha['num']} | {pg_txt}{linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
-    
-    resultado_texto += "\n*GUARNIÇÕES:*\n"
-    for guarnicao in st.session_state.lista_guarnicoes:
-        mils_str = ", ".join([m for m in guarnicao["militares"] if m.strip()])
-        resultado_texto += f"*{guarnicao['nome']}:* {mils_str}\n"
-    
-    texto_wapp = urllib.parse.quote(resultado_texto)
-    url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
-    st.markdown(
-        f'<a href="{url_whatsapp}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px;">🟢 Enviar Escala via WhatsApp</button></a>',
-        unsafe_allow_html=True
-    )
+        for linha in st.session_state.linhas_escala:
+            pg_txt = f"[{linha['pg']}] " if linha.get('pg') else ""
+            resultado_texto += f"- {linha['num']} | {pg_txt}{linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
+        
+        resultado_texto += "\n*GUARNIÇÕES:*\n"
+        for guarnicao in st.session_state.lista_guarnicoes:
+            mils_str = ", ".join([m for m in guarnicao["militares"] if m.strip()])
+            resultado_texto += f"*{guarnicao['nome']}:* {mils_str}\n"
+        
+        texto_wapp = urllib.parse.quote(resultado_texto)
+        url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
+        st.markdown(
+            f'<a href="{url_whatsapp}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px; text-align:center;">🟢 Enviar WhatsApp</button></a>',
+            unsafe_allow_html=True
+        )
 
 elif aba_escolhida == "🗂️ Histórico de Escalas":
     st.subheader("Consulta de Escalas Arquivadas")
@@ -472,9 +471,9 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
             if usar_filtro_data:
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
-                    data_inicio = st.date_input("De:", value=datetime.today())
+                    data_inicio = st.date_input("De:", value=datetime.today(), format="DD/MM/YYYY")
                 with col_d2:
-                    data_fim = st.date_input("Até:", value=datetime.today())
+                    data_fim = st.date_input("Até:", value=datetime.today(), format="DD/MM/YYYY")
             
         df_filtrado = df_hist.copy()
         if filtro_ala != "Todas":
