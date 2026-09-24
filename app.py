@@ -52,23 +52,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
+# Função atualizada para aplicar a máscara progressiva do telefone exatamente como pedido: (XX)XXXXX-XXXX
 def formatar_telefone(texto):
     digitos = "".join([c for c in texto if c.isdigit()])
-    if len(digitos) <= 2:
-        return f"({digitos}" if len(digitos) > 0 else ""
+    
+    if len(digitos) == 0:
+        return ""
+    elif len(digitos) <= 2:
+        return f"({digitos}"
     elif len(digitos) <= 6:
-        return f"({digitos[:2]}) {digitos[2:]}"
+        return f"({digitos[:2]}){digitos[2:]}"
     elif len(digitos) <= 10:
-        return f"({digitos[:2]}) {digitos[2:6]}-{digitos[6:]}"
+        return f"({digitos[:2]}){digitos[2:6]}-{digitos[6:]}"
     else:
-        return f"({digitos[:2]}) {digitos[2:7]}-{digitos[7:11]}"
+        return f"({digitos[:2]}){digitos[2:7]}-{digitos[7:11]}"
 
 st.markdown("""
 # Escala Operacional
 """)
 
-# Inicialização de memória de sessão (cache/cookies internos) para reter os últimos digitos
+# Inicialização de memória de sessão para reter os últimos dados digitados
 if "mem_chefe" not in st.session_state:
     st.session_state.mem_chefe = ""
 if "mem_cidade" not in st.session_state:
@@ -91,7 +94,7 @@ with col_c3:
 
 st.markdown("---")
 
-# Gestão de Estado para as linhas dinâmicas de Militares / Atribuições (vazias por padrão)
+# Gestão de Estado para as linhas dinâmicas de Militares / Atribuições
 if "linhas_escala" not in st.session_state:
     st.session_state.linhas_escala = [
         {"num": "01", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
@@ -100,14 +103,14 @@ if "linhas_escala" not in st.session_state:
         {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
     ]
 
-# Tabela Dinâmica: Militares / Atribuições
+# Tabela Dinâmica: Militares / Atribuições (Atualizado o título para apenas Atribuições)
 st.subheader("Militares / Atribuições")
 
 colunas_tabela = st.columns([1, 2, 2, 2, 2, 1])
 with colunas_tabela[0]: st.markdown("**Nº**")
 with colunas_tabela[1]: st.markdown("**Militar**")
 with colunas_tabela[2]: st.markdown("**Horário**")
-with colunas_tabela[3]: st.markdown("**Atribuições / Faxina**")
+with colunas_tabela[3]: st.markdown("**Atribuições**")
 with colunas_tabela[4]: st.markdown("**Telefone**")
 with colunas_tabela[5]: st.markdown("**Ação**")
 
@@ -126,7 +129,7 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c4:
         atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed", placeholder="Atribuição...")
     with c5:
-        tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed", placeholder="(33) ...")
+        tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed", placeholder="(33)...")
         tel = formatar_telefone(tel_input)
     with c6:
         if st.button("❌", key=f"del_mil_{i}"):
@@ -147,7 +150,7 @@ if st.button("Adicionar"):
 
 st.markdown("---")
 
-# Gestão de Estado para Guarnições Reduzidas Lado a Lado (vazias por padrão)
+# Gestão de Estado para Guarnições Reduzidas Lado a Lado
 if "lista_guarnicoes" not in st.session_state:
     st.session_state.lista_guarnicoes = [
         {"nome": "1ª GU BM", "militares": ["", ""]},
