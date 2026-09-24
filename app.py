@@ -3,6 +3,7 @@ from datetime import datetime
 import urllib.parse
 import sqlite3
 import pandas as pd
+import ast
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -55,7 +56,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configuração da Base de Dados SQLite para o Histórico
+# Configuração da Base de Dados SQLite para o Histórico com suporte a ID único ou atualização por Data/Ala
 def init_db():
     conn = sqlite3.connect("escala_historico.db")
     cursor = conn.cursor()
@@ -78,10 +79,21 @@ init_db()
 def salvar_escala_db(data, ala, cidade, chefe, dados_mils, dados_guars):
     conn = sqlite3.connect("escala_historico.db")
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO escalas (data, ala, cidade, chefe, dados_militares, dados_guarnicoes)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (data, ala, cidade, chefe, str(dados_mils), str(dados_guars)))
+    # Verifica se já existe uma escala para a mesma Data e Ala para atualizar ou inserir nova
+    cursor.execute('SELECT id FROM escalas WHERE data = ? AND ala = ?', (data, ala))
+    existente = cursor.fetchone()
+    
+    if existente:
+        cursor.execute('''
+            UPDATE escalas SET cidade = ?, chefe = ?, dados_militares = ?, dados_guarnicoes = ?
+            WHERE data = ? AND ala = ?
+        ''', (cidade, chefe, str(dados_mils), str(dados_guars), data, ala))
+    else:
+        cursor.execute('''
+            INSERT INTO escalas (data, ala, cidade, chefe, dados_militares, dados_guarnicoes)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (data, ala, cidade, chefe, str(dados_mils), str(dados_guars)))
+        
     conn.commit()
     conn.close()
 
@@ -193,38 +205,62 @@ st.markdown("""
 # Arquivo de Escalas Operacionais
 """)
 
-# Abas de Navegação Principal
-aba_nova, aba_historico = st.tabs(["📝 Nova Escala / Plantão", "🗂️ Histórico de Escalas"])
+# Gestão de Estado Global para Navegação entre Abas e Carregamento de Histórico
+if "aba_ativa" not in st.session_state:
+    st.session_state.aba_ativa = "📝 Nova Escala / Plantão"
 
-with aba_nova:
-    if "mem_chefe" not in st.session_state:
-        st.session_state.mem_chefe = ""
-    if "mem_cidade" not in st.session_state:
-        st.session_state.mem_cidade = "TEÓFILO OTONI"
+if "cidade_val" not in st.session_state:
+    st.session_state.cidade_val = "TEÓFILO OTONI"
+if "chefe_val" not in st.session_state:
+    st.session_state.chefe_val = ""
+if "ala_val" not in st.session_state:
+    st.session_state.ala_val = "1ª Ala Operacional"
+if "data_val" not in st.session_state:
+    st.session_state.data_val = datetime.today().strftime('%d/%m/%Y')
 
+if "linhas_escala" not in st.session_state:
+    st.session_state.linhas_escala = [
+        {"num": "01", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "02", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "03", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
+    ]
+
+if "lista_guarnicoes" not in st.session_state:
+    st.session_state.lista_guarnicoes = [
+        {"nome": "1ª GU BM", "militares": ["", ""]},
+        {"nome": "2ª GU BM", "militares": ["", ""]}
+    ]
+
+# Seletor de Abas Inteligente via Estado
+aba_escolhida = st.radio("", ["📝 Nova Escala / Plantão", "🗂️ Histórico de Escalas"], horizontal=True, label_visibility="collapsed", key="radio_abas")
+
+if aba_escolhida == "📝 Nova Escala / Plantão":
+    
     col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
+    alas_opcoes = ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"]
+    idx_ala = alas_opcoes.index(st.session_state.ala_val) if st.session_state.ala_val in alas_opcoes else 0
+
     with col_ala:
-        ala_selecionada = st.selectbox("Ala Operacional", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"], key="sel_ala_nova")
+        ala_selecionada = st.selectbox("Ala Operacional", alas_opcoes, index=idx_ala, key="sel_ala_nova")
+        st.session_state.ala_val = ala_selecionada
     with col_c1:
-        cidade_local = st.text_input("Local / Cidade", value=st.session_state.mem_cidade, key="input_cidade_nova")
-        st.session_state.mem_cidade = cidade_local
+        cidade_local = st.text_input("Local / Cidade", value=st.session_state.cidade_val, key="input_cidade_nova")
+        st.session_state.cidade_val = cidade_local
     with col_c2:
-        data_plantao_obj = st.date_input("Data:", value=datetime.today(), key="input_data_nova")
+        try:
+            dt_parse = datetime.strptime(st.session_state.data_val, '%d/%m/%Y')
+        except:
+            dt_parse = datetime.today()
+        data_plantao_obj = st.date_input("Data:", value=dt_parse, key="input_data_nova")
         data_plantao = data_plantao_obj.strftime('%d/%m/%Y')
+        st.session_state.data_val = data_plantao
     with col_c3:
-        chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.mem_chefe, key="input_chefe_nova", placeholder="Digite o Chefe...")
-        st.session_state.mem_chefe = chefe_servico
+        chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.chefe_val, key="input_chefe_nova", placeholder="Digite o Chefe...")
+        st.session_state.chefe_val = chefe_servico
 
     st.markdown("---")
-
-    if "linhas_escala" not in st.session_state:
-        st.session_state.linhas_escala = [
-            {"num": "01", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-            {"num": "02", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-            {"num": "03", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-            {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
-        ]
 
     st.subheader("Militares / Atribuições")
 
@@ -271,12 +307,6 @@ with aba_nova:
         st.rerun()
 
     st.markdown("---")
-
-    if "lista_guarnicoes" not in st.session_state:
-        st.session_state.lista_guarnicoes = [
-            {"nome": "1ª GU BM", "militares": ["", ""]},
-            {"nome": "2ª GU BM", "militares": ["", ""]}
-        ]
 
     st.subheader("Guarnições")
 
@@ -335,10 +365,13 @@ with aba_nova:
 
     st.markdown("---")
 
-    if st.button("Salvar e Arquivar Escala Oficial", type="primary", use_container_width=True):
-        salvar_escala_db(data_plantao, ala_selecionada, cidade_local, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
-        st.success("Escala salva e arquivada com sucesso no histórico operacional!")
-        
+    col_btn_save, col_btn_pdf = st.columns(2)
+    with col_btn_save:
+        if st.button("Salvar e Arquivar Escala Oficial", type="primary", use_container_width=True):
+            salvar_escala_db(data_plantao, ala_selecionada, cidade_local, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
+            st.success("Escala salva e arquivada com sucesso no histórico operacional!")
+
+    with col_btn_pdf:
         pdf_path = gerar_pdf(cidade_local, data_plantao, ala_selecionada, chefe_servico, st.session_state.linhas_escala, st.session_state.lista_guarnicoes)
         with open(pdf_path, "rb") as pdf_file:
             PDFbyte = pdf_file.read()
@@ -350,38 +383,36 @@ with aba_nova:
             mime='application/pdf',
             use_container_width=True
         )
-        
-        resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
+
+    # Botão de Envio WhatsApp
+    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
 
 *MILITARES / ATRIBUIÇÕES:*
 """
-        for linha in st.session_state.linhas_escala:
-            resultado_texto += f"- {linha['num']} | {linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
-        
-        resultado_texto += "\n*GUARNIÇÕES:*\n"
-        for guarnicao in st.session_state.lista_guarnicoes:
-            mils_str = ", ".join([m for m in guarnicao["militares"] if m.strip()])
-            resultado_texto += f"*{guarnicao['nome']}:* {mils_str}\n"
-        
-        st.code(resultado_texto, language="markdown")
-        
-        texto_wapp = urllib.parse.quote(resultado_texto)
-        url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
-        st.markdown(
-            f'<a href="{url_whatsapp}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">🟢 Enviar Escala via WhatsApp</button></a>',
-            unsafe_allow_html=True
-        )
+    for linha in st.session_state.linhas_escala:
+        resultado_texto += f"- {linha['num']} | {linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
+    
+    resultado_texto += "\n*GUARNIÇÕES:*\n"
+    for guarnicao in st.session_state.lista_guarnicoes:
+        mils_str = ", ".join([m for m in guarnicao["militares"] if m.strip()])
+        resultado_texto += f"*{guarnicao['nome']}:* {mils_str}\n"
+    
+    texto_wapp = urllib.parse.quote(resultado_texto)
+    url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
+    st.markdown(
+        f'<a href="{url_whatsapp}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px;">🟢 Enviar Escala via WhatsApp</button></a>',
+        unsafe_allow_html=True
+    )
 
-with aba_historico:
+elif aba_escolhida == "🗂️ Histórico de Escalas":
     st.subheader("Consulta de Escalas Arquivadas")
     df_hist = carregar_historico()
     
     if df_hist.empty:
         st.info("Ainda não existem escalas arquivadas na base de dados.")
     else:
-        # Filtros de consulta rápida
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             filtro_ala = st.selectbox("Filtrar por Ala", ["Todas"] + list(df_hist["ala"].unique()))
@@ -395,25 +426,20 @@ with aba_historico:
             df_filtrado = df_filtrado[df_filtrado["data"] == filtro_data]
             
         for index, row in df_filtrado.iterrows():
-            with st.expander(f"📅 Data: {row['data']} | 🛡️ Ala: {row['ala']} | 📍 Local: {row['cidade']} (Chefe: {row['chefe']})"):
-                st.markdown(f"**Chefe de Serviço:** {row['chefe']}")
-                st.markdown(f"**Militares / Atribuições:**")
-                st.text(row['dados_militares'])
-                st.markdown(f"**Guarnições:**")
-                st.text(row['dados_guarnicoes'])
-                
-                # Botão para regenerar o PDF da escala consultada
-                if st.button(f"📥 Baixar PDF da Escala ({row['data']} - {row['ala']})", key=f"pdf_hist_{row['id']}"):
-                    import ast
-                    mils_eval = ast.literal_eval(row['dados_militares'])
-                    guars_eval = ast.literal_eval(row['dados_guarnicoes'])
-                    pdf_path = gerar_pdf(row['cidade'], row['data'], row['ala'], row['chefe'], mils_eval, guars_eval)
-                    with open(pdf_path, "rb") as pdf_file:
-                        PDFbyte = pdf_file.read()
-                    st.download_button(
-                        label="Clique aqui para confirmar o download do PDF",
-                        data=PDFbyte,
-                        file_name=f"Escala_{row['ala'].replace(' ', '_')}_{row['data'].replace('/', '-')}.pdf",
-                        mime='application/pdf',
-                        key=f"dl_hist_{row['id']}"
-                    )
+            with st.container(border=True):
+                c_info, c_acao = st.columns([3, 1])
+                with c_info:
+                    st.markdown(f"📅 **Data:** {row['data']} | 🛡️ **Ala:** {row['ala']} | 📍 **Local:** {row['cidade']}")
+                    st.markdown(f"⭐ **Chefe de Serviço:** {row['chefe']}")
+                with c_acao:
+                    if st.button(f"👁️ Abrir Escala", key=f"abrir_{row['id']}"):
+                        # Carrega os dados para o st.session_state e muda para a aba de preenchimento
+                        st.session_state.cidade_val = row['cidade']
+                        st.session_state.chefe_val = row['chefe']
+                        st.session_state.ala_val = row['ala']
+                        st.session_state.data_val = row['data']
+                        st.session_state.linhas_escala = ast.literal_eval(row['dados_militares'])
+                        st.session_state.lista_guarnicoes = ast.literal_eval(row['dados_guarnicoes'])
+                        
+                        # Força a troca de aba
+                        st.rerun()
