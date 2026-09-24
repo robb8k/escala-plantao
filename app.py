@@ -18,7 +18,6 @@ st.markdown("""
         background-color: #1E1B1A;
         color: #E6E1E0;
     }
-    /* Reduz o espaçamento superior do Streamlit para aproximar o título do topo */
     .block-container {
         padding-top: 2rem !important;
     }
@@ -57,11 +56,12 @@ st.markdown("""
 col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
 with col_ala:
-    ala_selecionada = st.selectbox("Ala Operacional:", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"])
+    ala_selecionada = st.selectbox("Ala Operacional", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"])
 with col_c1:
     cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI")
 with col_c2:
-    data_plantao = st.date_input("Data do Plantão", value=datetime.today())
+    # Usando text_input para garantir formato brasileiro rigoroso DD/MM/AAAA
+    data_plantao = st.text_input("Data:", value=datetime.today().strftime('%d/%m/%Y'))
 with col_c3:
     chefe_servico = st.text_input("Chefe de Serviço", value="SGT MUNIZ")
 
@@ -87,9 +87,8 @@ with colunas_tabela[3]: st.markdown("**Atribuições / Faxina**")
 with colunas_tabela[4]: st.markdown("**Telefone**")
 with colunas_tabela[5]: st.markdown("**Ação**")
 
-# Captura os valores atuais dos campos de texto antes de reprocessar a lista
 linhas_temp = []
-indices_para_remover = None
+indice_remover_militar = None
 
 for i, item in enumerate(st.session_state.linhas_escala):
     c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 1])
@@ -105,51 +104,87 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c5:
         tel = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
     with c6:
-        excluir = st.button("❌", key=f"del_{i}")
-        if excluir:
-            indices_para_remover = i
+        if st.button("❌", key=f"del_mil_{i}"):
+            indice_remover_militar = i
             
     linhas_temp.append({"num": num, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel})
 
-# Atualiza o estado se um botão de exclusão foi premido
-if indices_para_remover is not None:
-    st.session_state.linhas_escala.pop(indices_para_remover)
+if indice_remover_militar is not None:
+    st.session_state.linhas_escala.pop(indice_remover_militar)
     st.rerun()
 else:
     st.session_state.linhas_escala = linhas_temp
 
-# Botão para adicionar nova linha
-if st.button("➕ Adicionar Militar / Atribuição"):
+if st.button("Adicionar"):
     novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
     st.session_state.linhas_escala.append({"num": novo_num, "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
     st.rerun()
 
 st.markdown("---")
 
-# Quadro de Guarnições
+# Gestão de Estado para Guarnições Dinâmicas
+if "lista_guarnicoes" not in st.session_state:
+    st.session_state.lista_guarnicoes = [
+        {"nome": "1ª GU BM", "militares": [chefe_servico, "CB VASCONCELOS"]},
+        {"nome": "2ª GU BM", "militares": ["SGT DIONE", "SGT ROBSON"]}
+    ]
+
 st.subheader("Guarnições")
-col_g1, col_g2 = st.columns(2)
 
-with col_g1:
-    st.markdown("##### 1ª GU BM")
-    gu1_1 = st.text_input("Efetivo 1.1", value=chefe_servico)
-    gu1_2 = st.text_input("Efetivo 1.2", value="CB VASCONCELOS")
-    gu1_3 = st.text_input("Efetivo 1.3", value="SGT ROBSON")
+Acao_remover_guarnicao = None
+Acao_adicionar_militar_guarnicao = None
+Acao_remover_militar_guarnicao = None
 
-with col_g2:
-    st.markdown("##### 2ª GU BM")
-    gu2_1 = st.text_input("Efetivo 2.1", value="SGT DIONE")
-    gu2_2 = st.text_input("Efetivo 2.2", value="SGT ROBSON")
-    gu2_3 = st.text_input("Efetivo 2.3", value="CB VASCONCELOS")
+for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
+    col_g_titulo, col_g_btn = st.columns([5, 1])
+    with col_g_titulo:
+        guarnicao["nome"] = st.text_input(f"Nome da Guarnição {g_idx}", value=guarnicao["nome"], key=f"g_nome_{g_idx}")
+    with col_g_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🗑️ Guarnição", key=f"del_g_{g_idx}"):
+            Acao_remover_guarnicao = g_idx
+            
+    # Militares da Guarnição
+    for m_idx, militar_nome in enumerate(guarnicao["militares"]):
+        col_m_nome, col_m_btn = st.columns([5, 1])
+        with col_m_nome:
+            guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1} da {guarnicao['nome']}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}")
+        with col_m_btn:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}"):
+                Acao_remover_militar_guarnicao = (g_idx, m_idx)
+                
+    if st.button(f"➕ Adicionar Militar em {guarnicao['nome']}", key=f"add_m_g_{g_idx}"):
+        Acao_adicionar_militar_guarnicao = g_idx
 
-st.markdown("---")
+    st.markdown("---")
+
+if st.button("➕ Adicionar Guarnição"):
+    nova_pos = len(st.session_state.lista_guarnicoes) + 1
+    st.session_state.lista_guarnicoes.append({"nome": f"{nova_pos}ª GU BM", "militares": ["", ""]})
+    st.rerun()
+
+# Processamento de Ações das Guarnições
+if Acao_remover_guarnicao is not None:
+    st.session_state.lista_guarnicoes.pop(Acao_remover_guarnicao)
+    st.rerun()
+
+if Acao_adicionar_militar_guarnicao is not None:
+    st.session_state.lista_guarnicoes[Acao_adicionar_militar_guarnicao]["militares"].append("")
+    st.rerun()
+
+if Acao_remover_militar_guarnicao is not None:
+    g_idx, m_idx = Acao_remover_militar_guarnicao
+    if len(st.session_state.lista_guarnicoes[g_idx]["militares"]) > 1:
+        st.session_state.lista_guarnicoes[g_idx]["militares"].pop(m_idx)
+        st.rerun()
+    else:
+        st.warning("Cada guarnição deve ter pelo menos um militar.")
 
 if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     st.success("Escala estruturada com sucesso!")
     
-    data_formatada = data_plantao.strftime('%d DE %B DE %Y').upper()
-    
-    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_formatada}*
+    resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_plantao}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
 
@@ -158,11 +193,10 @@ if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     for linha in st.session_state.linhas_escala:
         resultado_texto += f"- {linha['num']} | {linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
     
-    resultado_texto += f"""
-*GUARNIÇÕES:*
-*1ª GU BM:* {gu1_1}, {gu1_2}, {gu1_3}
-*2ª GU BM:* {gu2_1}, {gu2_2}, {gu2_3}
-"""
+    resultado_texto += "\n*GUARNIÇÕES:*\n"
+    for guarnicao in st.session_state.lista_guarnicoes:
+        mils_str = ", ".join([m for m in guarnicao["militares"] if m.strip()])
+        resultado_texto += f"*{guarnicao['nome']}:* {mils_str}\n"
     
     st.code(resultado_texto, language="markdown")
     
