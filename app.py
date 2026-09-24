@@ -52,18 +52,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Injeção de JavaScript para desativar o autocomplete/histórico do navegador nos inputs
-st.markdown("""
-<script>
-    setTimeout(function() {
-        const inputs = document.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.setAttribute('autocomplete', 'off');
-        });
-    }, 1000);
-</script>
-""", unsafe_allow_html=True)
-
 # Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
 def formatar_telefone(texto):
     digitos = "".join([c for c in texto if c.isdigit()])
@@ -80,17 +68,26 @@ st.markdown("""
 # Escala Operacional
 """)
 
+# Inicialização de memória de sessão (cache/cookies internos) para reter os últimos digitos
+if "mem_chefe" not in st.session_state:
+    st.session_state.mem_chefe = ""
+if "mem_cidade" not in st.session_state:
+    st.session_state.mem_cidade = "TEÓFILO OTONI"
+
 # Campos de Cabeçalho do Plantão
 col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
 with col_ala:
     ala_selecionada = st.selectbox("Ala Operacional", ["1ª Ala Operacional", "2ª Ala Operacional", "3ª Ala Operacional", "4ª Ala Operacional"])
 with col_c1:
-    cidade_local = st.text_input("Local / Cidade", value="TEÓFILO OTONI", key="input_cidade")
+    cidade_local = st.text_input("Local / Cidade", value=st.session_state.mem_cidade, key="input_cidade")
+    st.session_state.mem_cidade = cidade_local
 with col_c2:
-    data_plantao = st.text_input("Data:", value=datetime.today().strftime('%d/%m/%Y'), key="input_data")
+    data_plantao_obj = st.date_input("Data:", value=datetime.today())
+    data_plantao = data_plantao_obj.strftime('%d/%m/%Y')
 with col_c3:
-    chefe_servico = st.text_input("Chefe de Serviço", value="", key="input_chefe")
+    chefe_servico = st.text_input("Chefe de Serviço", value=st.session_state.mem_chefe, key="input_chefe", placeholder="Digite o Chefe...")
+    st.session_state.mem_chefe = chefe_servico
 
 st.markdown("---")
 
@@ -123,13 +120,13 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c1:
         num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
     with c2:
-        mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed")
+        mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed", placeholder="Nome...")
     with c3:
-        hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed")
+        hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed", placeholder="Ex: 08:00 / 22:00")
     with c4:
-        atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed")
+        atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed", placeholder="Atribuição...")
     with c5:
-        tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
+        tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed", placeholder="(33) ...")
         tel = formatar_telefone(tel_input)
     with c6:
         if st.button("❌", key=f"del_mil_{i}"):
@@ -179,7 +176,7 @@ for g_idx, guarnicao in enumerate(st.session_state.lista_guarnicoes):
         for m_idx, militar_nome in enumerate(guarnicao["militares"]):
             c_mil, c_del_m = st.columns([5, 1])
             with c_mil:
-                guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed")
+                guarnicao["militares"][m_idx] = st.text_input(f"Militar {m_idx+1}", value=militar_nome, key=f"g_{g_idx}_m_{m_idx}", label_visibility="collapsed", placeholder="Militar...")
             with c_del_m:
                 if st.button("❌", key=f"del_g_{g_idx}_m_{m_idx}", help="Remover Militar"):
                     acao_remover_militar_guarnicao = (g_idx, m_idx)
