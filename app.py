@@ -11,12 +11,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS Tática (Grafite e Laranja Queimado)
+# Estilização CSS Tática (Grafite e Laranja Queimado) e ajuste de margem superior
 st.markdown("""
 <style>
     .stApp {
         background-color: #1E1B1A;
         color: #E6E1E0;
+    }
+    /* Reduz o espaçamento superior do Streamlit para aproximar o título do topo */
+    .block-container {
+        padding-top: 2rem !important;
     }
     h1, h2, h3 {
         color: #C2410C !important;
@@ -73,7 +77,7 @@ if "linhas_escala" not in st.session_state:
     ]
 
 # Tabela Dinâmica: Militares / Atribuições
-st.subheader("2. Militares / Atribuições")
+st.subheader("Militares / Atribuições")
 
 colunas_tabela = st.columns([1, 2, 2, 2, 2, 1])
 with colunas_tabela[0]: st.markdown("**Nº**")
@@ -83,7 +87,10 @@ with colunas_tabela[3]: st.markdown("**Atribuições / Faxina**")
 with colunas_tabela[4]: st.markdown("**Telefone**")
 with colunas_tabela[5]: st.markdown("**Ação**")
 
-escala_atualizada = []
+# Captura os valores atuais dos campos de texto antes de reprocessar a lista
+linhas_temp = []
+indices_para_remover = None
+
 for i, item in enumerate(st.session_state.linhas_escala):
     c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 1])
     
@@ -98,10 +105,18 @@ for i, item in enumerate(st.session_state.linhas_escala):
     with c5:
         tel = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed")
     with c6:
-        if st.button("❌", key=f"del_{i}"):
-            pass # Tratado abaixo recriando a lista sem este índice
+        excluir = st.button("❌", key=f"del_{i}")
+        if excluir:
+            indices_para_remover = i
             
-    escala_atualizada.append({"num": num, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel, "del": c6})
+    linhas_temp.append({"num": num, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel})
+
+# Atualiza o estado se um botão de exclusão foi premido
+if indices_para_remover is not None:
+    st.session_state.linhas_escala.pop(indices_para_remover)
+    st.rerun()
+else:
+    st.session_state.linhas_escala = linhas_temp
 
 # Botão para adicionar nova linha
 if st.button("➕ Adicionar Militar / Atribuição"):
@@ -111,8 +126,8 @@ if st.button("➕ Adicionar Militar / Atribuição"):
 
 st.markdown("---")
 
-# 3. Quadro de Guarnições
-st.subheader("3. Guarnições Empenhadas")
+# Quadro de Guarnições
+st.subheader("Guarnições")
 col_g1, col_g2 = st.columns(2)
 
 with col_g1:
@@ -155,5 +170,5 @@ if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     url_whatsapp = f"https://api.whatsapp.com/send?text={texto_wapp}"
     st.markdown(
         f'<a href="{url_whatsapp}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">🟢 Enviar Escala via WhatsApp</button></a>',
-        unsafe_app_html=True if 'unsafe_app_html' in globals() else True
+        unsafe_allow_html=True
     )
