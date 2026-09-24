@@ -10,7 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 st.set_page_config(
-    page_title="Arquivo de Escalas Operacionais",
+    page_title="Escala Operacional",
     page_icon="📋",
     layout="wide"
 )
@@ -49,7 +49,6 @@ st.markdown("""
     .stButton button:hover {
         background-color: #9A3206 !important;
     }
-    /* Redução drástica e unificada em todos os botões de ação/exclusão da interface */
     div.stButton > button {
         padding: 1px 3px !important;
         font-size: 9px !important;
@@ -109,6 +108,13 @@ def carregar_historico():
     conn.close()
     return df
 
+def excluir_escala_db(escala_id):
+    conn = sqlite3.connect("escala_historico.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM escalas WHERE id = ?", (escala_id,))
+    conn.commit()
+    conn.close()
+
 # Função para formatar automaticamente o telefone brasileiro (XX) XXXXX-XXXX
 def formatar_telefone(texto):
     digitos = "".join([c for c in texto if c.isdigit()])
@@ -123,7 +129,7 @@ def formatar_telefone(texto):
     else:
         return f"({digitos[:2]}){digitos[2:7]}-{digitos[7:11]}"
 
-# Função para gerar o PDF formatado
+# Função para gerar o PDF formatado com a coluna P/G
 def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
     pdf_filename = "escala_operacional.pdf"
     doc = SimpleDocTemplate(pdf_filename, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -159,17 +165,18 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
 
     story.append(Paragraph("MILITARES / ATRIBUIÇÕES", sub_style))
     
-    tabela_data = [["Nº", "Militar", "Horário", "Atribuições", "Telefone"]]
+    tabela_data = [["Nº", "P/G", "Militar", "Horário", "Atribuições", "Telefone"]]
     for item in linhas_escala:
         tabela_data.append([
             item["num"],
+            item["pg"],
             item["militar"],
             item["horario"],
             item["atribuicao"],
             item["telefone"]
         ])
     
-    t_militares = Table(tabela_data, colWidths=[30, 120, 100, 165, 90])
+    t_militares = Table(tabela_data, colWidths=[25, 45, 105, 95, 145, 90])
     t_militares.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#C2410C')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
@@ -191,7 +198,7 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
         mils_str = ", ".join([m for m in g["militares"] if m.strip()])
         guarnicoes_data.append([g["nome"], mils_str])
         
-    t_guarnicoes = Table(guarnicoes_data, colWidths=[100, 405])
+    t_guarnicoes = Table(guarnicoes_data, colWidths=[100, 505])
     t_guarnicoes.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#33302E')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
@@ -208,10 +215,10 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
     return pdf_filename
 
 st.markdown("""
-# Arquivo de Escalas Operacionais
+# Escala Operacional
 """)
 
-# Gestão de Estado Global para Navegação entre Abas e Carregamento de Histórico
+# Gestão de Estado Global
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = "TEÓFILO OTONI"
 if "chefe_val" not in st.session_state:
@@ -223,10 +230,10 @@ if "data_val" not in st.session_state:
 
 if "linhas_escala" not in st.session_state:
     st.session_state.linhas_escala = [
-        {"num": "01", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "02", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "03", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "04", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
+        {"num": "01", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "02", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "03", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"num": "04", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
     ]
 
 if "lista_guarnicoes" not in st.session_state:
@@ -266,36 +273,39 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.subheader("Militares / Atribuições")
 
-    colunas_tabela = st.columns([1, 2, 2, 2, 2, 0.4])
+    colunas_tabela = st.columns([0.8, 1.2, 2, 2, 2, 2, 0.4])
     with colunas_tabela[0]: st.markdown("**Nº**")
-    with colunas_tabela[1]: st.markdown("**Militar**")
-    with colunas_tabela[2]: st.markdown("**Horário**")
-    with colunas_tabela[3]: st.markdown("**Atribuições**")
-    with colunas_tabela[4]: st.markdown("**Telefone**")
-    with colunas_tabela[5]: st.markdown("**Ação**")
+    with colunas_tabela[1]: st.markdown("**P/G**")
+    with colunas_tabela[2]: st.markdown("**Militar**")
+    with colunas_tabela[3]: st.markdown("**Horário**")
+    with colunas_tabela[4]: st.markdown("**Atribuições**")
+    with colunas_tabela[5]: st.markdown("**Telefone**")
+    with colunas_tabela[6]: st.markdown("**Ação**")
 
     linhas_temp = []
     indice_remover_militar = None
 
     for i, item in enumerate(st.session_state.linhas_escala):
-        c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 2, 2, 2, 0.4])
+        c1, c2, c3, c4, c5, c6, c7 = st.columns([0.8, 1.2, 2, 2, 2, 2, 0.4])
         
         with c1:
             num = st.text_input(f"N_{i}", value=item["num"], key=f"num_{i}", label_visibility="collapsed")
         with c2:
-            mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed", placeholder="Nome...")
+            pg = st.text_input(f"PG_{i}", value=item.get("pg", ""), key=f"pg_{i}", label_visibility="collapsed", placeholder="Ex: 2º Sgt")
         with c3:
-            hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed", placeholder="Ex: 08:00 / 22:00")
+            mil = st.text_input(f"Mil_{i}", value=item["militar"], key=f"mil_{i}", label_visibility="collapsed", placeholder="Nome...")
         with c4:
-            atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed", placeholder="Atribuição...")
+            hor = st.text_input(f"Hor_{i}", value=item["horario"], key=f"hor_{i}", label_visibility="collapsed", placeholder="Ex: 08:00")
         with c5:
+            atr = st.text_input(f"Atr_{i}", value=item["atribuicao"], key=f"atr_{i}", label_visibility="collapsed", placeholder="Atribuição...")
+        with c6:
             tel_input = st.text_input(f"Tel_{i}", value=item["telefone"], key=f"tel_{i}", label_visibility="collapsed", placeholder="(33)...")
             tel = formatar_telefone(tel_input)
-        with c6:
+        with c7:
             if st.button("❌", key=f"del_mil_{i}"):
                 indice_remover_militar = i
                 
-        linhas_temp.append({"num": num, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel})
+        linhas_temp.append({"num": num, "pg": pg, "militar": mil, "horario": hor, "atribuicao": atr, "telefone": tel})
 
     if indice_remover_militar is not None:
         st.session_state.linhas_escala.pop(indice_remover_militar)
@@ -307,7 +317,7 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
     with col_btn_add_m:
         if st.button("➕ Adicionar"):
             novo_num = f"{len(st.session_state.linhas_escala) + 1:02d}"
-            st.session_state.linhas_escala.append({"num": novo_num, "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
+            st.session_state.linhas_escala.append({"num": novo_num, "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""})
             st.rerun()
 
     st.markdown("---")
@@ -397,7 +407,8 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 *MILITARES / ATRIBUIÇÕES:*
 """
     for linha in st.session_state.linhas_escala:
-        resultado_texto += f"- {linha['num']} | {linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
+        pg_txt = f"[{linha['pg']}] " if linha.get('pg') else ""
+        resultado_texto += f"- {linha['num']} | {pg_txt}{linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
     
     resultado_texto += "\n*GUARNIÇÕES:*\n"
     for guarnicao in st.session_state.lista_guarnicoes:
@@ -422,26 +433,39 @@ elif aba_escolhida == "🗂️ Histórico de Escalas":
         with col_f1:
             filtro_ala = st.selectbox("Filtrar por Ala", ["Todas"] + list(df_hist["ala"].unique()))
         with col_f2:
-            filtro_data = st.selectbox("Filtrar por Data", ["Todas"] + list(df_hist["data"].unique()))
+            usar_filtro_data = st.checkbox("Filtrar por Data Específica (Calendário)")
+            if usar_filtro_data:
+                data_busca = st.date_input("Selecione a data para busca", value=datetime.today())
+                filtro_data_str = data_busca.strftime('%d/%m/%Y')
+            else:
+                filtro_data_str = "Todas"
             
         df_filtrado = df_hist.copy()
         if filtro_ala != "Todas":
             df_filtrado = df_filtrado[df_filtrado["ala"] == filtro_ala]
-        if filtro_data != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["data"] == filtro_data]
+        if usar_filtro_data:
+            df_filtrado = df_filtrado[df_filtrado["data"] == filtro_data_str]
             
-        for index, row in df_filtrado.iterrows():
-            with st.container(border=True):
-                c_info, c_acao = st.columns([3, 1])
-                with c_info:
-                    st.markdown(f"📅 **Data:** {row['data']} | 🛡️ **Ala:** {row['ala']} | 📍 **Local:** {row['cidade']}")
-                    st.markdown(f"⭐ **Chefe de Serviço:** {row['chefe']}")
-                with c_acao:
-                    if st.button(f"👁️ Abrir", key=f"abrir_{row['id']}"):
-                        st.session_state.cidade_val = row['cidade']
-                        st.session_state.chefe_val = row['chefe']
-                        st.session_state.ala_val = row['ala']
-                        st.session_state.data_val = row['data']
-                        st.session_state.linhas_escala = ast.literal_eval(row['dados_militares'])
-                        st.session_state.lista_guarnicoes = ast.literal_eval(row['dados_guarnicoes'])
-                        st.rerun()
+        if df_filtrado.empty:
+            st.warning("Nenhuma escala encontrada com os filtros selecionados.")
+        else:
+            for index, row in df_filtrado.iterrows():
+                with st.container(border=True):
+                    c_info, c_acao1, c_acao2 = st.columns([3, 1, 1])
+                    with c_info:
+                        st.markdown(f"📅 **Data:** {row['data']} | 🛡️ **Ala:** {row['ala']} | 📍 **Local:** {row['cidade']}")
+                        st.markdown(f"⭐ **Chefe de Serviço:** {row['chefe']}")
+                    with c_acao1:
+                        if st.button(f"👁️ Abrir", key=f"abrir_{row['id']}"):
+                            st.session_state.cidade_val = row['cidade']
+                            st.session_state.chefe_val = row['chefe']
+                            st.session_state.ala_val = row['ala']
+                            st.session_state.data_val = row['data']
+                            st.session_state.linhas_escala = ast.literal_eval(row['dados_militares'])
+                            st.session_state.lista_guarnicoes = ast.literal_eval(row['dados_guarnicoes'])
+                            st.rerun()
+                    with c_acao2:
+                        if st.button(f"🗑️ Excluir", key=f"del_hist_{row['id']}"):
+                            excluir_escala_db(row['id'])
+                            st.success("Escala excluída com sucesso!")
+                            st.rerun()
