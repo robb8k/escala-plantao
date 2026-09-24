@@ -62,7 +62,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Injeção de JavaScript para forçar a desativação de autocomplete e cache de formulário nos inputs
+# Injeção de JavaScript para desativar autocomplete
 st.markdown("""
 <script>
     setTimeout(function() {
@@ -142,7 +142,7 @@ def formatar_telefone(texto):
     else:
         return f"({digitos[:2]}){digitos[2:7]}-{digitos[7:11]}"
 
-# Função para gerar o PDF formatado com a coluna P/G
+# Função para gerar o PDF formatado com Guarnições lado a lado e militares empilhados
 def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
     pdf_filename = "escala_operacional.pdf"
     doc = SimpleDocTemplate(pdf_filename, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -169,6 +169,22 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
         spaceAfter=6
     )
 
+    cell_style = ParagraphStyle(
+        'CellPDF',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=colors.HexColor('#1E1B1A')
+    )
+
+    cell_bold_style = ParagraphStyle(
+        'CellBoldPDF',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        textColor=colors.HexColor('#1E1B1A')
+    )
+
     story.append(Paragraph(f"ESCALA DE SERVIÇO - {ala.upper()} - {cidade.upper()}, {data.upper()}", titulo_style))
     story.append(Spacer(1, 10))
     
@@ -181,12 +197,12 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
     tabela_data = [["Nº", "P/G", "Militar", "Horário", "Atribuições", "Telefone"]]
     for item in linhas_escala:
         tabela_data.append([
-            item["num"],
-            item["pg"],
-            item["militar"],
-            item["horario"],
-            item["atribuicao"],
-            item["telefone"]
+            Paragraph(item["num"], cell_style),
+            Paragraph(item["pg"], cell_style),
+            Paragraph(item["militar"], cell_style),
+            Paragraph(item["horario"], cell_style),
+            Paragraph(item["atribuicao"], cell_style),
+            Paragraph(item["telefone"], cell_style)
         ])
     
     t_militares = Table(tabela_data, colWidths=[25, 45, 105, 95, 145, 90])
@@ -206,24 +222,46 @@ def gerar_pdf(cidade, data, ala, chefe, linhas_escala, guarnicoes):
 
     story.append(Paragraph("GUARNIÇÕES", sub_style))
     
-    guarnicoes_data = [["Guarnição", "Efetivo / Militares Empregados"]]
-    for g in guarnicoes:
-        mils_str = ", ".join([m for m in g["militares"] if m.strip()])
-        guarnicoes_data.append([g["nome"], mils_str])
-        
-    t_guarnicoes = Table(guarnicoes_data, colWidths=[100, 505])
-    t_guarnicoes.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#33302E')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,-1), 8),
-        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#4A4240')),
-        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#F4F1F0')),
-    ]))
+    # Organiza as guarnições em blocos lado a lado (2 colunas por linha no PDF)
+    guarnicoes_grid = []
+    linha_atual = []
     
-    story.append(t_guarnicoes)
+    for g in guarnicoes:
+        # Monta o conteúdo formatado da guarnição (Nome em destaque e militares um abaixo do outro)
+        conteudo_guarnicao = [Paragraph(f"<b>{g['nome']}</b>", cell_bold_style), Spacer(1, 4)]
+        for m in g["militares"]:
+            if m.strip():
+                conteudo_guarnicao.append(Paragraph(m, cell_style))
+        
+        # Cria uma sub-tabela interna para cada cartão de guarnição
+        t_bloco = Table([[conteudo_guarnicao]], colWidths=[245])
+        t_bloco.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F4F1F0')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#4A4240')),
+            ('TOPPADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ]))
+        
+        linha_atual.append(t_bloco)
+        if len(linha_atual) == 2:
+            guarnicoes_grid.append(linha_atual)
+            linha_atual = []
+            
+    if linha_atual:
+        if len(linha_atual) == 1:
+            linha_atual.append("") # Célula vazia para alinhar caso seja ímpar
+        guarnicoes_grid.append(linha_atual)
+        
+    if guarnicoes_grid:
+        t_guarnicoes_geral = Table(guarnicoes_grid, colWidths=[250, 255])
+        t_guarnicoes_geral.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ]))
+        story.append(t_guarnicoes_geral)
+        
     doc.build(story)
     return pdf_filename
 
@@ -231,7 +269,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Gestão de Estado Global (vazias por padrão)
+# Gestão de Estado Global
 if "cidade_val" not in st.session_state:
     st.session_state.cidade_val = ""
 if "chefe_val" not in st.session_state:
@@ -243,10 +281,10 @@ if "data_val" not in st.session_state:
 
 if "linhas_escala" not in st.session_state:
     st.session_state.linhas_escala = [
-        {"num": "01", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "02", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "03", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
-        {"num": "04", "pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
+        {"pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""},
+        {"pg": "", "militar": "", "horario": "", "atribuicao": "", "telefone": ""}
     ]
 
 if "lista_guarnicoes" not in st.session_state:
@@ -302,7 +340,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
         c1, c2, c3, c4, c5, c6, c7 = st.columns([0.8, 1.2, 2, 2, 2, 2, 0.4])
         
         with c1:
-            # Número estático, sem campo de input
             num = f"{i+1:02d}"
             st.markdown(f"<div style='padding-top: 6px; font-weight: bold; color: #E6E1E0;'>{num}</div>", unsafe_allow_html=True)
         with c2:
@@ -396,7 +433,6 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
     st.markdown("---")
 
-    # Botões inferiores lado a lado com tamanhos padronizados (Salvar, PDF, Limpar e WhatsApp)
     col_btn_save, col_btn_pdf, col_btn_limpar, col_btn_wapp = st.columns(4)
     
     with col_btn_save:
@@ -431,6 +467,10 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
                 {"nome": "1ª GU BM", "militares": ["", ""]},
                 {"nome": "2ª GU BM", "militares": ["", ""]}
             ]
+            # Limpa todos os widgets da sessão para apagar os inputs do ecrã
+            for key in list(st.session_state.keys()):
+                if key.startswith("pg_") or key.startswith("mil_") or key.startswith("hor_") or key.startswith("atr_") or key.startswith("tel_") or key.startswith("g_"):
+                    del st.session_state[key]
             st.rerun()
 
     with col_btn_wapp:
@@ -440,9 +480,10 @@ if aba_escolhida == "📝 Nova Escala / Plantão":
 
 *MILITARES / ATRIBUIÇÕES:*
 """
-        for linha in st.session_state.linhas_escala:
+        for i, linha in enumerate(st.session_state.linhas_escala):
             pg_txt = f"[{linha['pg']}] " if linha.get('pg') else ""
-            resultado_texto += f"- {linha['num']} | {pg_txt}{linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
+            num_fmt = f"{i+1:02d}"
+            resultado_texto += f"- {num_fmt} | {pg_txt}{linha['militar']} | {linha['horario']} | {linha['atribuicao']} | Tel: {linha['telefone']}\n"
         
         resultado_texto += "\n*GUARNIÇÕES:*\n"
         for guarnicao in st.session_state.lista_guarnicoes:
