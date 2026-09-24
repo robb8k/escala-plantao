@@ -49,7 +49,7 @@ st.markdown("""
 # Escala Operacional
 """)
 
-# Campos de Cabeçalho do Plantão
+# Campos de Cabeçalho do Plantão (Sem ACS)
 col_ala, col_c1, col_c2, col_c3 = st.columns(4)
 
 with col_ala:
@@ -60,8 +60,6 @@ with col_c2:
     data_plantao = st.date_input("Data do Plantão", value=datetime.today())
 with col_c3:
     chefe_servico = st.text_input("Chefe de Serviço", value="SGT MUNIZ")
-
-acs_servico = st.text_input("ACS (Adjunto do Chefe de Serviço)", value="SGT DIONE")
 
 st.markdown("---")
 
@@ -78,7 +76,7 @@ with colunas_tabela[4]: st.markdown("**Telefone**")
 
 dados_iniciais = [
     ("01", chefe_servico, "08:00 / 22:00 / 05:00", "CHEFE DE SERVIÇO / VTR'S", "33 98807-9755"),
-    ("02", acs_servico, "10:00 / 16:00 / 00:00", "A.C.S. / ALOJ. SGT / VTR'S", "33 99833-9415"),
+    ("02", "SGT DIONE", "10:00 / 16:00 / 00:00", "A.C.S. / ALOJ. SGT / VTR'S", "33 99833-9415"),
     ("03", "SGT SOUZA", "14:00 / 20:00 / 01:40", "MP / COZINHA E REFEITÓRIO", "33 98864-5111"),
     ("04", "CB VASCONCELOS", "12:00 / 18:00 / 03:20", "MP / COMBATENTE / ALOJ. CB ESD", "33 98727-8403"),
     ("05", "CB HENDRIK", "BANCO DE HORAS", "XXXX", "33 98816-9539")
@@ -114,7 +112,7 @@ with col_g1:
 
 with col_g2:
     st.markdown("##### 2ª GU BM")
-    gu2_1 = st.text_input("Efetivo 2.1", value=acs_servico)
+    gu2_1 = st.text_input("Efetivo 2.1", value="SGT DIONE")
     gu2_2 = st.text_input("Efetivo 2.2", value="SGT ROBSON")
     gu2_3 = st.text_input("Efetivo 2.3", value="CB VASCONCELOS")
 
@@ -128,7 +126,6 @@ if st.button("Gerar Escala Oficial", type="primary", use_container_width=True):
     resultado_texto = f"""*ESCALA DE SERVIÇO - {ala_selecionada.upper()} - {cidade_local}, {data_formatada}*
 
 *CHEFE DE SERVIÇO:* {chefe_servico}
-*ACS:* {acs_servico}
 
 *ESCALA DE SENTINELA / RÁDIO OPERADOR:*
 """
